@@ -11,15 +11,14 @@ import {
   Scale,
   DollarSign,
   Download,
-  Loader2,
-  CheckCircle2,
   AlertCircle,
+  Phone,
 } from "lucide-react";
 import generatePDF from "../utils/generatePDF";
 
 /* FIRESTORE */
 import { db } from "../firebase/config";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, doc, runTransaction } from "firebase/firestore";
 
 /* ── Constants ──────────────────────────────────────────────── */
 const FILAMENT_OPTIONS = ["PLA", "ABS", "PETG", "TPU"];
@@ -32,6 +31,7 @@ const initialState = {
   filament: "",
   grams: "",
   ratePerGram: "",
+  clientPhone: "",
 };
 
 /* ── Toast Component ────────────────────────────────────────── */
@@ -111,8 +111,26 @@ export default function InvoiceForm() {
     setLoading(true);
 
     try {
+      let invoiceNumber = 1;
+
+      // ATOMIC TRANSACTION TO GET SEQUENTIAL INVOICE NUMBER
+      await runTransaction(db, async (transaction) => {
+        const counterRef = doc(db, "metadata", "counters");
+        const counterSnap = await transaction.get(counterRef);
+
+        if (!counterSnap.exists()) {
+          transaction.set(counterRef, { lastInvoiceNumber: 1 });
+          invoiceNumber = 1;
+        } else {
+          const newNum = (counterSnap.data().lastInvoiceNumber || 0) + 1;
+          transaction.update(counterRef, { lastInvoiceNumber: newNum });
+          invoiceNumber = newNum;
+        }
+      });
+
       const payload = {
         ...formData,
+        invoiceNumber,
         grams: Number(formData.grams),
         price: Number(formData.ratePerGram),
         total,
@@ -186,14 +204,23 @@ export default function InvoiceForm() {
             {/* Section: Customer Info */}
             <section>
               <SectionLabel text="Customer Information" />
-              <FormField
-                icon={<User size={18} />}
-                label="Customer Name"
-                placeholder="Enter customer name"
-                value={formData.customer}
-                onChange={(v) => updateField("customer", v)}
-                error={errors.customer}
-              />
+              <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
+                <FormField
+                  icon={<User size={18} />}
+                  label="Customer Name"
+                  placeholder="Enter customer name"
+                  value={formData.customer}
+                  onChange={(v) => updateField("customer", v)}
+                  error={errors.customer}
+                />
+                <FormField
+                  icon={<Phone size={18} />}
+                  label="Customer Phone"
+                  placeholder="Enter phone number"
+                  value={formData.clientPhone}
+                  onChange={(v) => updateField("clientPhone", v)}
+                />
+              </div>
             </section>
 
             {/* Section: Job Details */}
