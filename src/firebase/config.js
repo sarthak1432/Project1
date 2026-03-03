@@ -10,6 +10,11 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+// Diagnostic warning for production
+if (!firebaseConfig.projectId && import.meta.env.PROD) {
+  console.error("CRITICAL: Firebase Project ID is undefined. Check Vercel Environment Variables.");
+}
+
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
