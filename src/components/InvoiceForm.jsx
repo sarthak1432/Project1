@@ -13,6 +13,8 @@ import {
   Download,
   AlertCircle,
   Phone,
+  Loader2,
+  CheckCircle2,
 } from "lucide-react";
 import generatePDF from "../utils/generatePDF";
 
