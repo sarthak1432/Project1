@@ -41,12 +41,14 @@ export default function Reports() {
     let totalGrams = 0;
     let designTime = 0;
     let printTime = 0;
+    let wearAndTear = 0;
 
     invoices.forEach(i => {
       totalRevenue += Number(i.total || 0);
       totalGrams += Number(i.grams || 0);
       designTime += Number(i.designTime || 0);
       printTime += Number(i.printTime || 0);
+      wearAndTear += Number(i.wearAndTear || 0);
     });
 
     return {
@@ -55,6 +57,7 @@ export default function Reports() {
       orderCount: invoices.length,
       designTime,
       printTime,
+      wearAndTear,
       averageTicket: invoices.length ? totalRevenue / invoices.length : 0
     };
   }, [invoices]);
@@ -156,6 +159,7 @@ export default function Reports() {
                 <div className="space-y-6">
                   <ProgressRow label="Printing" value={stats.printTime} unit="hr" />
                   <ProgressRow label="Design" value={stats.designTime} unit="min" />
+                  <ProgressRow label="System Wear" value={stats.wearAndTear} unit="hr" />
                 </div>
               </div>
             </div>

@@ -18,7 +18,7 @@ export default function App() {
       {/* SIDEBAR — desktop */}
       <aside className="w-64 bg-white/80 backdrop-blur-xl border-r border-indigo-100 shadow-sm p-6 hidden md:flex flex-col shrink-0">
         <div className="mb-10 flex justify-center">
-          <img src="/kits3d.png" alt="KITS Logo" className="h-16 w-auto object-contain drop-shadow-md" />
+          <img src="/logo.jpg" alt="KITS Logo" className="h-16 w-auto object-contain drop-shadow-md" />
         </div>
 
         <nav className="space-y-4 text-slate-600">
@@ -50,7 +50,7 @@ export default function App() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col items-center justify-center mb-8 relative">
-              <img src="/kits3d.png" alt="KITS Logo" className="h-14 w-auto object-contain drop-shadow-md" />
+              <img src="/logo.jpg" alt="KITS Logo" className="h-14 w-auto object-contain drop-shadow-md" />
               <button
                 onClick={() => setMobileMenuOpen(false)}
                 className="absolute right-0 top-0 p-1"
@@ -98,7 +98,7 @@ export default function App() {
 
           {/* Mobile Center Logo */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 md:hidden">
-            <img src="/kits3d.png" alt="KITS" className="h-8 w-auto object-contain drop-shadow-sm" />
+            <img src="/logo.jpg" alt="KITS" className="h-8 w-auto object-contain drop-shadow-sm" />
           </div>
 
           <h2 className="hidden md:block text-base sm:text-lg font-semibold text-slate-700 truncate uppercase tracking-wide">

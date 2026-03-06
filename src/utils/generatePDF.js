@@ -70,42 +70,44 @@ const generatePDF = async (data) => {
   let currentY = 0;
 
   // ── 1. Top Navy Header with Slant ───────────────
-  const headerHeight = 45;
+  const headerHeight = 50;
   doc.setFillColor(...cNavyHeader);
   doc.rect(0, 0, pageWidth, headerHeight, "F");
 
   // White slant/cutout at bottom-left of header
   doc.setFillColor(...cWhite);
-  doc.rect(0, headerHeight - 12, 55, 12, "F");
-  doc.triangle(55, headerHeight, 70, headerHeight, 55, headerHeight - 12, "F");
+  doc.rect(0, headerHeight - 12, 60, 12, "F");
+  doc.triangle(60, headerHeight, 75, headerHeight, 60, headerHeight - 12, "F");
 
-  // Logo (Left-aligned)
+  // Logo (Left-aligned, Top corner)
   try {
-    const logoBase64 = await loadImageAsBase64("/kits3d.png");
-    doc.addImage(logoBase64, "PNG", 30, 5, 45, 25);
+    const logoBase64 = await loadImageAsBase64("/logo.jpg");
+    // Precisely fit into top corner with balanced padding
+    // x=margin, y=10, w=42, h=30 (Previous "proper" fit)
+    doc.addImage(logoBase64, "JPEG", margin, 10, 42, 30);
   } catch (e) {
-    doc.setFont("helvetica", "bold");
+    doc.setFont("times", "bold");
     doc.setFontSize(22);
     doc.setTextColor(...cWhite);
-    doc.text("KITS", 30, 22);
+    doc.text("KITS", margin, 25);
   }
 
   // "INVOICE" Title (Right-aligned)
-  doc.setFont("helvetica", "normal");
+  doc.setFont("times", "normal");
   doc.setFontSize(30);
   doc.setTextColor(...cWhite);
-  doc.text("INVOICE", rightCol, 25, { align: "right" });
+  doc.text("INVOICE", rightCol, 32, { align: "right" });
 
   currentY = headerHeight + 15;
 
   // ── 2. Contact Details & Invoice Summary ──────────
   // Address & Identity (Left)
   doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
+  doc.setFont("times", "bold");
   doc.setTextColor(...cTextBlack);
   doc.text("KITS TECH SOLUTIONS", margin, currentY);
 
-  doc.setFont("helvetica", "normal");
+  doc.setFont("times", "normal");
   doc.setTextColor(...cTextGray);
   doc.text("1st Floor, Mukta Plaza, KITS Square,", margin, currentY + 6);
   doc.text("Gaurakshan Road, Akola-444001", margin, currentY + 11);
@@ -122,33 +124,36 @@ const generatePDF = async (data) => {
   const summaryBoxW = 65;
   const summaryBoxX = rightCol - summaryBoxW;
   doc.setFillColor(...cLightBg);
-  doc.rect(summaryBoxX, currentY - 5, summaryBoxW, 32, "F");
+  doc.rect(summaryBoxX, currentY - 5, summaryBoxW, 35, "F"); // Increased height from 32 to 35
 
   doc.setDrawColor(...cOrange);
   doc.setLineWidth(1);
-  doc.line(summaryBoxX, currentY - 5, summaryBoxX, currentY + 27);
+  doc.line(summaryBoxX, currentY - 5, summaryBoxX, currentY + 30); // Increased line length
 
   doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
+  doc.setFont("times", "normal");
   doc.setTextColor(...cTextGray);
   doc.text("INVOICE NO", summaryBoxX + 5, currentY + 2);
-  doc.setFont("helvetica", "bold");
+  doc.setFont("times", "bold");
   doc.setFontSize(9);
   doc.setTextColor(...cTextBlack);
   doc.text(`INV-${new Date().getFullYear()}-${data.invoiceNumber || 1}`, summaryBoxX + 5, currentY + 7);
 
-  doc.setFont("helvetica", "normal");
+  doc.setFont("times", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...cTextGray);
   doc.text("DATE OF ISSUE", summaryBoxX + 5, currentY + 14);
   doc.text("PAYMENT STATUS", summaryBoxX + 5, currentY + 21);
+  doc.text("PAYMENT MODE", summaryBoxX + 5, currentY + 28); // Added Payment Mode label
 
-  doc.setFont("helvetica", "bold");
+  doc.setFont("times", "bold");
   doc.setFontSize(8.5);
   doc.setTextColor(...cTextBlack);
   doc.text(data.date || new Date().toLocaleDateString(), summaryBoxX + 32, currentY + 14);
   doc.setTextColor(34, 139, 34); // Forest Green for Paid
   doc.text("PAID", summaryBoxX + 32, currentY + 21);
+  doc.setTextColor(...cTextBlack);
+  doc.text(data.paymentMode || "Cash", summaryBoxX + 32, currentY + 28); // Added Payment Mode value
 
   currentY += 45;
 
@@ -157,22 +162,22 @@ const generatePDF = async (data) => {
   doc.setLineWidth(0.3);
   doc.line(margin, currentY - 5, rightCol, currentY - 5);
 
-  doc.setFont("helvetica", "bold");
+  doc.setFont("times", "bold");
   doc.setFontSize(9);
   doc.setTextColor(...cOrange);
   doc.text("BILL TO", margin, currentY + 2);
 
   doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
+  doc.setFont("times", "normal");
   doc.setTextColor(...cTextGray);
   doc.text("Client Name:", margin, currentY + 12);
   doc.setTextColor(...cTextBlack);
-  doc.setFont("helvetica", "bold");
+  doc.setFont("times", "bold");
   doc.setFontSize(10);
   doc.text(data.customer, margin + 25, currentY + 12);
 
   if (data.clientPhone) {
-    doc.setFont("helvetica", "normal");
+    doc.setFont("times", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(...cTextGray);
     doc.text("Contact:", margin, currentY + 18);
@@ -186,15 +191,16 @@ const generatePDF = async (data) => {
   autoTable(doc, {
     startY: currentY,
     margin: { left: margin, right: margin },
-    head: [["SERVICE DESCRIPTION", "MATERIAL", "DESIGN", "PRINT", "WEIGHT", "RATE", "TOTAL"]],
+    head: [["MODEL NAME", "FILAMENT", "DESIGN", "PRINT", "WEIGHT", "SYSTEM WEAR", "UNIT RATE", "TOTAL"]],
     body: [[
       { content: data.model, styles: { fontStyle: 'bold' } },
       data.filament,
       `${data.designTime || 0}m`,
       `${data.printTime || 0}h`,
       `${data.grams}g`,
+      `${data.wearAndTear || 0}h`,
       (data.price || 0).toFixed(2),
-      (data.total || 0).toFixed(2)
+      ((data.price || 0) * (data.grams || 0)).toFixed(2)
     ]],
     theme: "striped",
     headStyles: {
@@ -206,34 +212,90 @@ const generatePDF = async (data) => {
       cellPadding: 4,
     },
     bodyStyles: {
-      fontSize: 9,
+      fontSize: 8.5,
       textColor: cTextBlack,
-      halign: "center",
-      cellPadding: 6,
+      cellPadding: 4,
+      valign: "middle"
     },
     columnStyles: {
-      0: { halign: "left", cellWidth: 45 },
-      6: { fontStyle: "bold" }
+      0: { halign: "left", cellWidth: 45 },   // Model Name (more space)
+      1: { halign: "left", cellWidth: 20 },   // Filament
+      2: { halign: "center", cellWidth: 14 }, // Design Time
+      3: { halign: "center", cellWidth: 14 }, // Print Time
+      4: { halign: "center", cellWidth: 15 }, // Weight
+      5: { halign: "center", cellWidth: 20 }, // Wear
+      6: { halign: "right", cellWidth: 20 },  // Rate
+      7: { halign: "right", cellWidth: 22, fontStyle: "bold" } // Total
     }
   });
 
-  currentY = doc.lastAutoTable.finalY + 15;
+  currentY = doc.lastAutoTable.finalY + 10;
+
+  // ── 4.5 Accessories Section (If any) ──────────────
+  if (data.accessories && data.accessories.length > 0) {
+    autoTable(doc, {
+      startY: currentY,
+      margin: { left: margin, right: margin },
+      head: [["ADDITIONAL ACCESSORIES / PARTS"]],
+      body: data.accessories.filter(acc => acc.trim()).map(acc => [acc]),
+      theme: "striped",
+      headStyles: {
+        fillColor: [240, 240, 245],
+        textColor: cNavyHeader,
+        fontSize: 8,
+        fontStyle: "bold",
+        halign: "left",
+        cellPadding: 3,
+      },
+      bodyStyles: {
+        fontSize: 8.5,
+        textColor: cTextBlack,
+        halign: "left",
+        cellPadding: 4,
+      }
+    });
+    currentY = doc.lastAutoTable.finalY + 10;
+  }
+
+  // ── 4.7 Extra Cost Rendering ────────────────────
+  const subtotal = (data.price || 0) * (data.grams || 0);
+
+  if (data.extraCost && Number(data.extraCost) > 0) {
+    // Show Subtotal if there's an extra cost
+    doc.setFont("times", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...cTextGray);
+    doc.text("SUBTOTAL:", rightCol - 70, currentY);
+    doc.setFont("times", "normal");
+    doc.setTextColor(...cTextBlack);
+    doc.text(formatCurrency(subtotal), rightCol, currentY, { align: "right" });
+    currentY += 7;
+
+    doc.setFont("times", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...cTextGray);
+    doc.text("EXTRA COST:", rightCol - 70, currentY);
+    doc.setFont("times", "normal");
+    doc.setTextColor(...cTextBlack);
+    doc.text(formatCurrency(data.extraCost), rightCol, currentY, { align: "right" });
+    currentY += 8;
+  }
 
   // ── 5. BOX MODE GRAND TOTAL (Refined) ─────────────
   const summaryBoxX2 = rightCol - 70;
   doc.setFillColor(...cNavyHeader);
   doc.rect(summaryBoxX2, currentY, 70, 15, "F");
 
-  doc.setFont("helvetica", "bold");
+  doc.setFont("times", "bold");
   doc.setFontSize(9);
   doc.setTextColor(...cWhite);
-  doc.text("GRAND TOTAL", summaryBoxX2 + 5, currentY + 9.5);
+  doc.text("FINAL AMOUNT", summaryBoxX2 + 5, currentY + 9.5);
 
   doc.setFontSize(11);
   doc.text(formatCurrency(data.total), rightCol - 5, currentY + 9.5, { align: "right" });
 
   // Amount in Words
-  doc.setFont("helvetica", "italic");
+  doc.setFont("times", "italic");
   doc.setFontSize(8);
   doc.setTextColor(...cTextGray);
   doc.text(toWords(data.total).toUpperCase(), rightCol, currentY + 23, { align: "right" });
@@ -249,7 +311,7 @@ const generatePDF = async (data) => {
 
   // Thank you centered under signature area
   doc.setFontSize(13);
-  doc.setFont("helvetica", "normal");
+  doc.setFont("times", "normal");
   doc.setTextColor(...cTextBlack);
   doc.text("Thank you for your business!", centerX, finalY + 18, { align: "center" });
 
@@ -262,12 +324,12 @@ const generatePDF = async (data) => {
   doc.rect(0, footerY, pageWidth, footerBarH, "F");
 
   // Brand Name in Footer
-  doc.setFont("helvetica", "bold");
+  doc.setFont("times", "bold");
   doc.setFontSize(10);
   doc.setTextColor(...cWhite);
   doc.text("KITS TECH SOLUTIONS", centerX, footerY + 6, { align: "center" });
 
-  doc.setFont("helvetica", "normal");
+  doc.setFont("times", "normal");
   doc.setFontSize(7.5);
   doc.text("info@kitstechsolutions.com", centerX, footerY + 11.5, { align: "center" });
 

@@ -15,6 +15,11 @@ import {
   Phone,
   Loader2,
   CheckCircle2,
+  Zap,
+  Plus,
+  Trash2,
+  Paperclip,
+  CreditCard
 } from "lucide-react";
 import generatePDF from "../utils/generatePDF";
 
@@ -34,6 +39,10 @@ const initialState = {
   grams: "",
   ratePerGram: "",
   clientPhone: "",
+  wearAndTear: "",
+  accessories: [],
+  extraCost: "",
+  paymentMode: "Cash",
 };
 
 /* ── Toast Component ────────────────────────────────────────── */
@@ -72,14 +81,30 @@ export default function InvoiceForm() {
 
   /* TOTAL */
   const total = useMemo(() => {
-    return (Number(formData.grams) || 0) * (Number(formData.ratePerGram) || 0);
-  }, [formData.grams, formData.ratePerGram]);
+    const gramCost = (Number(formData.grams) || 0) * (Number(formData.ratePerGram) || 0);
+    const extra = Number(formData.extraCost) || 0;
+    return gramCost + extra;
+  }, [formData.grams, formData.ratePerGram, formData.extraCost]);
 
   /* UPDATE FIELD */
   const updateField = useCallback((name, value) => {
     setFormData((p) => ({ ...p, [name]: value }));
     setErrors((p) => ({ ...p, [name]: undefined }));
   }, []);
+
+  const addAccessory = () => {
+    setFormData(p => ({ ...p, accessories: [...p.accessories, ""] }));
+  };
+
+  const updateAccessory = (index, val) => {
+    const next = [...formData.accessories];
+    next[index] = val;
+    setFormData(p => ({ ...p, accessories: next }));
+  };
+
+  const removeAccessory = (index) => {
+    setFormData(p => ({ ...p, accessories: p.accessories.filter((_, i) => i !== index) }));
+  };
 
   /* VALIDATION */
   const validate = () => {
@@ -133,8 +158,10 @@ export default function InvoiceForm() {
       const payload = {
         ...formData,
         invoiceNumber,
-        grams: Number(formData.grams),
-        price: Number(formData.ratePerGram),
+        grams: Number(formData.grams) || 0,
+        price: Number(formData.ratePerGram) || 0,
+        extraCost: Number(formData.extraCost) || 0,
+        wearAndTear: Number(formData.wearAndTear) || 0,
         total,
         date: new Date().toLocaleDateString(),
       };
@@ -317,6 +344,101 @@ export default function InvoiceForm() {
                   error={errors.ratePerGram}
                 />
               </div>
+              <div className="grid sm:grid-cols-2 gap-4 sm:gap-5 mt-4 sm:mt-5">
+                <FormField
+                  icon={<Zap size={18} />}
+                  label="System Wear & Tear (Hrs)"
+                  placeholder="Enter busy hours"
+                  type="number"
+                  value={formData.wearAndTear}
+                  onChange={(v) => updateField("wearAndTear", v)}
+                />
+              </div>
+            </section>
+
+            {/* Section: Accessories */}
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <SectionLabel text="Additional Accessories" />
+                <button
+                  type="button"
+                  onClick={addAccessory}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
+                >
+                  <Plus size={14} /> Add Item
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {formData.accessories.map((acc, idx) => (
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    key={idx}
+                    className="flex gap-2"
+                  >
+                    <div className="relative flex-1">
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                        <Paperclip size={16} />
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="e.g. 4x M3 Screws"
+                        value={acc}
+                        onChange={(e) => updateAccessory(idx, e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border-2 border-slate-100 text-sm bg-slate-50/30 outline-none focus:border-indigo-400 transition-all"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeAccessory(idx)}
+                      className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </motion.div>
+                ))}
+                {formData.accessories.length === 0 && (
+                  <p className="text-center py-4 text-slate-400 text-xs italic border-2 border-dashed border-slate-100 rounded-2xl">
+                    No accessories added. Click "Add Item" to include extra parts.
+                  </p>
+                )}
+              </div>
+            </section>
+
+            {/* Section: Extra Charges */}
+            <section>
+              <SectionLabel text="Extra Charges" />
+              <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
+                <FormField
+                  icon={<DollarSign size={18} />}
+                  label="Extra Cost (INR)"
+                  placeholder="₹ Manual additional cost"
+                  type="number"
+                  value={formData.extraCost}
+                  onChange={(v) => updateField("extraCost", v)}
+                />
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    Payment Mode
+                  </label>
+                  <div className="relative">
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                      <CreditCard size={18} />
+                    </div>
+                    <select
+                      value={formData.paymentMode}
+                      onChange={(e) => updateField("paymentMode", e.target.value)}
+                      className="w-full pl-11 pr-4 py-3 rounded-xl border-2 border-slate-200 text-sm bg-slate-50/50
+                        transition-all duration-200 outline-none appearance-none cursor-pointer
+                        focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 hover:border-slate-300"
+                    >
+                      <option value="Cash">Cash</option>
+                      <option value="UPI">UPI</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
             </section>
 
             {/* ── Total ────────────────────────────────── */}
@@ -328,7 +450,7 @@ export default function InvoiceForm() {
               <div className="relative flex items-center justify-between">
                 <div>
                   <p className="text-blue-100 text-sm font-medium">
-                    Estimated Total
+                    Final Amount
                   </p>
                   <motion.p
                     key={total}
