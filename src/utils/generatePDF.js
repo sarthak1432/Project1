@@ -82,14 +82,13 @@ const generatePDF = async (data) => {
   // Logo (Left-aligned, Top corner)
   try {
     const logoBase64 = await loadImageAsBase64("/logo.jpg");
-    // Precisely fit into top corner with balanced padding
-    // x=margin, y=10, w=42, h=30 (Previous "proper" fit)
-    doc.addImage(logoBase64, "JPEG", margin, 10, 42, 30);
+    // Move 5mm up: y=5 instead of 10, and 2.5mm left: x=margin-2.5
+    doc.addImage(logoBase64, "JPEG", margin - 2.5, 5, 42, 30);
   } catch (e) {
     doc.setFont("times", "bold");
     doc.setFontSize(22);
     doc.setTextColor(...cWhite);
-    doc.text("KITS", margin, 25);
+    doc.text("KITS", margin - 2.5, 20); // Moved 5mm up from 25, and 2.5mm left
   }
 
   // "INVOICE" Title (Right-aligned)
@@ -114,11 +113,14 @@ const generatePDF = async (data) => {
 
   doc.text("info@kitstechsolutions.com", margin + 5, currentY + 18);
   doc.text("+91 7385582242", margin + 5, currentY + 24);
+  doc.text("GSTN : 27BKEPR0080C1ZG", margin + 5, currentY + 30);
 
   // Subtle dots for contact
   doc.setFillColor(...cOrange);
   doc.circle(margin + 1, currentY + 17.5, 0.6, "F");
   doc.circle(margin + 1, currentY + 23.5, 0.6, "F");
+  doc.circle(margin + 1, currentY + 29.5, 0.6, "F");
+
 
   // Summary Box (Right) - Professional structure
   const summaryBoxW = 65;
@@ -185,20 +187,31 @@ const generatePDF = async (data) => {
     doc.text(`+91 ${data.clientPhone}`, margin + 25, currentY + 18);
   }
 
+  if (data.customerGST) {
+    const gstRowY = data.clientPhone ? 24 : 18;
+    doc.setFont("times", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...cTextGray);
+    doc.text("GSTIN:", margin, currentY + gstRowY);
+    doc.setTextColor(...cTextBlack);
+    doc.text(data.customerGST, margin + 25, currentY + gstRowY);
+    if (gstRowY === 24) currentY += 6; // adjust spacing if both phone and gst exist
+  }
+
   currentY += 25;
 
   // ── 4. The Table ─────────────────────────────────
   autoTable(doc, {
     startY: currentY,
     margin: { left: margin, right: margin },
-    head: [["MODEL NAME", "FILAMENT", "DESIGN", "PRINT", "WEIGHT", "SYSTEM WEAR", "UNIT RATE", "TOTAL"]],
+    head: [["MODEL", "FILAMENT", "DESIGN TIME", "PRINT TIME", "WEIGHT", "DEV TIME", "RATE", "TOTAL"]],
     body: [[
       { content: data.model, styles: { fontStyle: 'bold' } },
       data.filament,
       `${data.designTime || 0}m`,
       `${data.printTime || 0}h`,
       `${data.grams}g`,
-      `${data.wearAndTear || 0}h`,
+      `${data.developmentTime || 0}h`,
       (data.price || 0).toFixed(2),
       ((data.price || 0) * (data.grams || 0)).toFixed(2)
     ]],
@@ -206,27 +219,29 @@ const generatePDF = async (data) => {
     headStyles: {
       fillColor: [240, 240, 245],
       textColor: cNavyHeader,
-      fontSize: 8,
+      fontSize: 7.5, // Slightly reduced from 8
       fontStyle: "bold",
       halign: "center",
-      cellPadding: 4,
+      cellPadding: 3, // Reduced from 4
     },
     bodyStyles: {
-      fontSize: 8.5,
+      fontSize: 8, // Slightly reduced from 8.5
       textColor: cTextBlack,
-      cellPadding: 4,
+      cellPadding: 3, // Reduced from 4
       valign: "middle"
     },
     columnStyles: {
-      0: { halign: "left", cellWidth: 45 },   // Model Name (more space)
-      1: { halign: "left", cellWidth: 20 },   // Filament
-      2: { halign: "center", cellWidth: 14 }, // Design Time
-      3: { halign: "center", cellWidth: 14 }, // Print Time
-      4: { halign: "center", cellWidth: 15 }, // Weight
-      5: { halign: "center", cellWidth: 20 }, // Wear
-      6: { halign: "right", cellWidth: 20 },  // Rate
-      7: { halign: "right", cellWidth: 22, fontStyle: "bold" } // Total
+      0: { halign: "left", cellWidth: 32 },   // Model (Reduced from 35)
+      1: { halign: "left", cellWidth: 22 },   // Filament (Increased from 18)
+      2: { halign: "center", cellWidth: 22 }, // Design Time
+      3: { halign: "center", cellWidth: 22 }, // Print Time
+      4: { halign: "center", cellWidth: 18 }, // Weight
+      5: { halign: "center", cellWidth: 18 }, // Dev Time
+      6: { halign: "right", cellWidth: 15 },  // Rate (Slightly reduced)
+      7: { halign: "right", cellWidth: 21, fontStyle: "bold" } // Total
     }
+
+
   });
 
   currentY = doc.lastAutoTable.finalY + 10;
@@ -257,20 +272,23 @@ const generatePDF = async (data) => {
     currentY = doc.lastAutoTable.finalY + 10;
   }
 
-  // ── 4.7 Extra Cost Rendering ────────────────────
-  const subtotal = (data.price || 0) * (data.grams || 0);
+  // ── 4.7 Summary Breakdown ──────────────────────
+  const itemsCost = (data.price || 0) * (data.grams || 0);
 
-  if (data.extraCost && Number(data.extraCost) > 0) {
-    // Show Subtotal if there's an extra cost
+  // 1. Items Subtotal (Always show if extra cost or GST exists)
+  if ((data.extraCost && Number(data.extraCost) > 0) || data.addGST === "Yes") {
     doc.setFont("times", "bold");
     doc.setFontSize(8.5);
     doc.setTextColor(...cTextGray);
-    doc.text("SUBTOTAL:", rightCol - 70, currentY);
+    doc.text("ITEMS SUBTOTAL:", rightCol - 70, currentY);
     doc.setFont("times", "normal");
     doc.setTextColor(...cTextBlack);
-    doc.text(formatCurrency(subtotal), rightCol, currentY, { align: "right" });
+    doc.text(formatCurrency(itemsCost), rightCol, currentY, { align: "right" });
     currentY += 7;
+  }
 
+  // 2. Extra Cost (If any)
+  if (data.extraCost && Number(data.extraCost) > 0) {
     doc.setFont("times", "bold");
     doc.setFontSize(8.5);
     doc.setTextColor(...cTextGray);
@@ -278,6 +296,29 @@ const generatePDF = async (data) => {
     doc.setFont("times", "normal");
     doc.setTextColor(...cTextBlack);
     doc.text(formatCurrency(data.extraCost), rightCol, currentY, { align: "right" });
+    currentY += 7;
+  }
+
+  // 3. GST Breakdown (If enabled)
+  if (data.addGST === "Yes") {
+    // CGST
+    doc.setFont("times", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...cTextGray);
+    doc.text("CGST (9%):", rightCol - 70, currentY);
+    doc.setFont("times", "normal");
+    doc.setTextColor(...cTextBlack);
+    doc.text(formatCurrency(data.gstAmount / 2), rightCol, currentY, { align: "right" });
+    currentY += 7;
+
+    // SGST
+    doc.setFont("times", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...cTextGray);
+    doc.text("SGST (9%):", rightCol - 70, currentY);
+    doc.setFont("times", "normal");
+    doc.setTextColor(...cTextBlack);
+    doc.text(formatCurrency(data.gstAmount / 2), rightCol, currentY, { align: "right" });
     currentY += 8;
   }
 

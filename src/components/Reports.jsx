@@ -41,14 +41,14 @@ export default function Reports() {
     let totalGrams = 0;
     let designTime = 0;
     let printTime = 0;
-    let wearAndTear = 0;
+    let developmentTime = 0;
 
     invoices.forEach(i => {
       totalRevenue += Number(i.total || 0);
       totalGrams += Number(i.grams || 0);
       designTime += Number(i.designTime || 0);
       printTime += Number(i.printTime || 0);
-      wearAndTear += Number(i.wearAndTear || 0);
+      developmentTime += Number(i.developmentTime || 0);
     });
 
     return {
@@ -57,7 +57,7 @@ export default function Reports() {
       orderCount: invoices.length,
       designTime,
       printTime,
-      wearAndTear,
+      developmentTime,
       averageTicket: invoices.length ? totalRevenue / invoices.length : 0
     };
   }, [invoices]);
@@ -125,7 +125,24 @@ export default function Reports() {
                 </h3>
                 <button className="text-indigo-600 text-xs font-bold hover:underline">View All Records</button>
               </div>
-              <div className="overflow-x-auto">
+              {/* Mobile View: Cards */}
+              <div className="md:hidden divide-y divide-slate-50">
+                {recentInvoices.map((inv, idx) => (
+                  <div key={inv.id || idx} className="p-5 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <span className="font-bold text-slate-800 text-sm">{inv.customer}</span>
+                      <span className="text-xs font-medium text-slate-400">{inv.date}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-500 font-medium truncate max-w-[150px]">{inv.model}</span>
+                      <span className="font-bold text-indigo-600">₹{inv.total}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop View: Table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left">
                   <thead className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">
                     <tr>
@@ -159,7 +176,7 @@ export default function Reports() {
                 <div className="space-y-6">
                   <ProgressRow label="Printing" value={stats.printTime} unit="hr" />
                   <ProgressRow label="Design" value={stats.designTime} unit="min" />
-                  <ProgressRow label="System Wear" value={stats.wearAndTear} unit="hr" />
+                  <ProgressRow label="Development" value={stats.developmentTime} unit="hr" />
                 </div>
               </div>
             </div>

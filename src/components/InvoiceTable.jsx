@@ -66,6 +66,7 @@ export default function InvoiceTable() {
       ...rest,
       grams: Number(editData.grams),
       price: Number(editData.price),
+      developmentTime: Number(editData.developmentTime) || 0,
       total: Number(editData.grams) * Number(editData.price)
     };
 
@@ -146,14 +147,18 @@ export default function InvoiceTable() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-[11px] text-slate-500">
-                <div className="bg-white/50 p-2 rounded-lg border border-slate-50">
-                  <span className="block text-slate-400 font-medium uppercase mb-0.5">Design / Print</span>
-                  <span className="text-slate-700 font-semibold">{inv.designTime}m / {inv.printTime}h</span>
+              <div className="grid grid-cols-1 gap-3 text-[11px] text-slate-500">
+                <div className="flex justify-between items-center bg-white/50 p-2.5 rounded-lg border border-slate-50">
+                  <span className="text-slate-400 font-medium uppercase">Design / Print / Dev</span>
+                  <span className="text-slate-700 font-semibold">{inv.designTime}m / {inv.printTime}h / {inv.developmentTime}h</span>
                 </div>
-                <div className="bg-white/50 p-2 rounded-lg border border-slate-50">
-                  <span className="block text-slate-400 font-medium uppercase mb-0.5">Weight / Price</span>
+                <div className="flex justify-between items-center bg-white/50 p-2.5 rounded-lg border border-slate-50">
+                  <span className="text-slate-400 font-medium uppercase">Weight / Price</span>
                   <span className="text-slate-700 font-semibold">{inv.grams}g / ₹{inv.price}</span>
+                </div>
+                <div className="flex justify-between items-center bg-white/50 p-2.5 rounded-lg border border-slate-50">
+                  <span className="text-slate-400 font-medium uppercase">Payment Mode</span>
+                  <span className="text-slate-700 font-semibold">{inv.paymentMode || "Cash"}</span>
                 </div>
               </div>
 
@@ -186,7 +191,7 @@ export default function InvoiceTable() {
           <table className="w-full text-sm text-left border-collapse">
             <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold tracking-widest border-b border-slate-100">
               <tr>
-                {["Customer", "Model", "Filament", "Design", "Print", "Grams", "Price", "Total", "Date", "Actions"].map(h => (
+                {["Customer", "Model", "Filament", "Design", "Print", "Dev", "Grams", "Price", "Total", "Payment", "Date", "Actions"].map(h => (
                   <th key={h} className="px-6 py-4 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -204,9 +209,16 @@ export default function InvoiceTable() {
                   </td>
                   <td className="px-6 py-4 text-slate-500">{inv.designTime}m</td>
                   <td className="px-6 py-4 text-slate-500">{inv.printTime}h</td>
+                  <td className="px-6 py-4 text-slate-500">{inv.developmentTime}h</td>
                   <td className="px-6 py-4 text-slate-500">{inv.grams}g</td>
                   <td className="px-6 py-4 text-slate-500">₹{inv.price}</td>
                   <td className="px-6 py-4 font-bold text-indigo-600">₹{inv.total}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${inv.paymentMode === "UPI" ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600"
+                      }`}>
+                      {inv.paymentMode || "Cash"}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 text-slate-400 text-xs">{inv.date}</td>
                   <td className="px-6 py-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
@@ -278,7 +290,28 @@ export default function InvoiceTable() {
                   />
                 </div>
               </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Development Time (Hrs)</label>
+                <input
+                  type="number"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 outline-none transition-all text-sm"
+                  value={editData.developmentTime}
+                  onChange={e => setEditData({ ...editData, developmentTime: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Payment Mode</label>
+                <select
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 outline-none transition-all text-sm bg-white appearance-none cursor-pointer"
+                  value={editData.paymentMode || "Cash"}
+                  onChange={e => setEditData({ ...editData, paymentMode: e.target.value })}
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="UPI">UPI</option>
+                </select>
+              </div>
             </div>
+
 
             <div className="p-6 flex gap-3 bg-slate-50/50 border-t border-slate-100">
               <button

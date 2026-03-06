@@ -19,7 +19,8 @@ import {
   Plus,
   Trash2,
   Paperclip,
-  CreditCard
+  CreditCard,
+  IndianRupee,
 } from "lucide-react";
 import generatePDF from "../utils/generatePDF";
 
@@ -39,10 +40,12 @@ const initialState = {
   grams: "",
   ratePerGram: "",
   clientPhone: "",
-  wearAndTear: "",
+  developmentTime: "",
   accessories: [],
   extraCost: "",
   paymentMode: "Cash",
+  addGST: "No",
+  customerGST: "",
 };
 
 /* ── Toast Component ────────────────────────────────────────── */
@@ -155,13 +158,21 @@ export default function InvoiceForm() {
         }
       });
 
+      const subtotal = (Number(formData.grams) * Number(formData.ratePerGram)) + Number(formData.extraCost || 0);
+      const gstAmount = formData.addGST === "Yes" ? subtotal * 0.18 : 0;
+      const total = subtotal + gstAmount;
+
       const payload = {
         ...formData,
         invoiceNumber,
+        customerGST: formData.customerGST,
         grams: Number(formData.grams) || 0,
         price: Number(formData.ratePerGram) || 0,
         extraCost: Number(formData.extraCost) || 0,
-        wearAndTear: Number(formData.wearAndTear) || 0,
+        developmentTime: Number(formData.developmentTime) || 0,
+        addGST: formData.addGST,
+        gstAmount,
+        subtotal,
         total,
         date: new Date().toLocaleDateString(),
       };
@@ -344,16 +355,41 @@ export default function InvoiceForm() {
                   error={errors.ratePerGram}
                 />
               </div>
-              <div className="grid sm:grid-cols-2 gap-4 sm:gap-5 mt-4 sm:mt-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 mt-4 sm:mt-5">
                 <FormField
                   icon={<Zap size={18} />}
-                  label="System Wear & Tear (Hrs)"
-                  placeholder="Enter busy hours"
+                  label="Development Time (Hrs)"
+                  placeholder="Enter dev hours"
                   type="number"
-                  value={formData.wearAndTear}
-                  onChange={(v) => updateField("wearAndTear", v)}
+                  value={formData.developmentTime}
+                  onChange={(v) => updateField("developmentTime", v)}
+                />
+                <FormField
+                  icon={<IndianRupee size={16} />}
+                  label="Add GST?"
+                  type="select"
+                  placeholder="Select"
+                  value={formData.addGST}
+                  options={["No", "Yes"]}
+                  onChange={(v) => updateField("addGST", v)}
                 />
               </div>
+
+              {formData.addGST === "Yes" && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="mt-4 sm:mt-5"
+                >
+                  <FormField
+                    icon={<FileText size={18} />}
+                    label="Customer GST Number"
+                    placeholder="Enter customer GSTIN (Optional)"
+                    value={formData.customerGST}
+                    onChange={(v) => updateField("customerGST", v)}
+                  />
+                </motion.div>
+              )}
             </section>
 
             {/* Section: Accessories */}
@@ -409,7 +445,7 @@ export default function InvoiceForm() {
             {/* Section: Extra Charges */}
             <section>
               <SectionLabel text="Extra Charges" />
-              <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                 <FormField
                   icon={<DollarSign size={18} />}
                   label="Extra Cost (INR)"
@@ -418,26 +454,14 @@ export default function InvoiceForm() {
                   value={formData.extraCost}
                   onChange={(v) => updateField("extraCost", v)}
                 />
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                    Payment Mode
-                  </label>
-                  <div className="relative">
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-                      <CreditCard size={18} />
-                    </div>
-                    <select
-                      value={formData.paymentMode}
-                      onChange={(e) => updateField("paymentMode", e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 rounded-xl border-2 border-slate-200 text-sm bg-slate-50/50
-                        transition-all duration-200 outline-none appearance-none cursor-pointer
-                        focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 hover:border-slate-300"
-                    >
-                      <option value="Cash">Cash</option>
-                      <option value="UPI">UPI</option>
-                    </select>
-                  </div>
-                </div>
+                <FormField
+                  icon={<CreditCard size={18} />}
+                  label="Payment Mode"
+                  type="select"
+                  value={formData.paymentMode}
+                  options={["Cash", "UPI"]}
+                  onChange={(v) => updateField("paymentMode", v)}
+                />
               </div>
             </section>
 
@@ -513,7 +537,7 @@ function SectionLabel({ text }) {
 }
 
 /* ── Form Field ─────────────────────────────────────────────── */
-function FormField({ icon, label, placeholder, value, onChange, type = "text", error }) {
+function FormField({ icon, label, placeholder, value, onChange, type = "text", options = [], error }) {
   return (
     <div>
       <label className="block text-sm font-semibold text-slate-700 mb-1.5">
@@ -523,18 +547,43 @@ function FormField({ icon, label, placeholder, value, onChange, type = "text", e
         <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
           {icon}
         </div>
-        <input
-          type={type}
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={`w-full pl-11 pr-4 py-3 rounded-xl border-2 text-sm bg-slate-50/50
-            transition-all duration-200 outline-none
-            ${error
-              ? "border-red-300 focus:border-red-400 focus:ring-4 focus:ring-red-50"
-              : "border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 hover:border-slate-300"
-            }`}
-        />
+        {type === "select" ? (
+          <select
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className={`w-full pl-11 pr-10 py-3 rounded-xl border-2 text-sm bg-slate-50/50
+              transition-all duration-200 outline-none appearance-none cursor-pointer
+              ${error
+                ? "border-red-300 focus:border-red-400 focus:ring-4 focus:ring-red-50"
+                : "border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 hover:border-slate-300"
+              }`}
+          >
+            {placeholder && <option value="" disabled>{placeholder}</option>}
+            {options.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type={type}
+            placeholder={placeholder}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className={`w-full pl-11 pr-4 py-3 rounded-xl border-2 text-sm bg-slate-50/50
+              transition-all duration-200 outline-none
+              ${error
+                ? "border-red-300 focus:border-red-400 focus:ring-4 focus:ring-red-50"
+                : "border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 hover:border-slate-300"
+              }`}
+          />
+        )}
+        {type === "select" && (
+          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        )}
       </div>
       {error && (
         <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">
