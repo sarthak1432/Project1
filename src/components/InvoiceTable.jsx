@@ -21,7 +21,8 @@ export default function InvoiceTable() {
   const fetchInvoices = useCallback(async () => {
     try {
       const snap = await getDocs(collection(db, "invoices"));
-      setInvoices(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const allData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setInvoices(allData.filter(i => !i.isDeleted));
     } catch (e) {
       console.error(e);
     } finally {
@@ -52,10 +53,10 @@ export default function InvoiceTable() {
   const deleteInvoice = async (id) => {
     if (!window.confirm("Delete this invoice?")) return;
     try {
-      await deleteDoc(doc(db, "invoices", id));
+      await updateDoc(doc(db, "invoices", id), { isDeleted: true });
       setInvoices(prev => prev.filter(i => i.id !== id));
     } catch (e) {
-      console.error("Error deleting document: ", e);
+      console.error("Error soft-deleting document: ", e);
     }
   };
 

@@ -139,7 +139,7 @@ const generatePDF = async (data) => {
   doc.setFont("times", "bold");
   doc.setFontSize(9);
   doc.setTextColor(...cTextBlack);
-  doc.text(`INV-${new Date().getFullYear()}-${data.invoiceNumber || 1}`, summaryBoxX + 5, currentY + 7);
+  doc.text(`3D-${new Date().getFullYear()}-${data.invoiceNumber || 1}`, summaryBoxX + 5, currentY + 7);
 
   doc.setFont("times", "normal");
   doc.setFontSize(8);
@@ -219,26 +219,32 @@ const generatePDF = async (data) => {
     headStyles: {
       fillColor: [240, 240, 245],
       textColor: cNavyHeader,
-      fontSize: 7.5, // Slightly reduced from 8
+      fontSize: 7.5,
       fontStyle: "bold",
-      halign: "center",
-      cellPadding: 3, // Reduced from 4
+      halign: "center", // Global center for headers
+      cellPadding: 4,
     },
     bodyStyles: {
-      fontSize: 8, // Slightly reduced from 8.5
+      fontSize: 8,
       textColor: cTextBlack,
-      cellPadding: 3, // Reduced from 4
+      cellPadding: 4,
       valign: "middle"
     },
     columnStyles: {
-      0: { halign: "left", cellWidth: 32 },   // Model (Reduced from 35)
-      1: { halign: "left", cellWidth: 22 },   // Filament (Increased from 18)
-      2: { halign: "center", cellWidth: 22 }, // Design Time
-      3: { halign: "center", cellWidth: 22 }, // Print Time
-      4: { halign: "center", cellWidth: 18 }, // Weight
-      5: { halign: "center", cellWidth: 18 }, // Dev Time
-      6: { halign: "right", cellWidth: 15 },  // Rate (Slightly reduced)
-      7: { halign: "right", cellWidth: 21, fontStyle: "bold" } // Total
+      0: { halign: "center", cellWidth: 40 }, // Model: Centered & slightly narrower
+      1: { halign: "center", cellWidth: 22 }, // Filament: Centered & slightly narrower
+      2: { halign: "center", cellWidth: 18 },
+      3: { halign: "center", cellWidth: 18 },
+      4: { halign: "center", cellWidth: 22 }, // Weight: Increased to 22 for single-line header
+      5: { halign: "center", cellWidth: 14 },
+      6: { halign: "right", cellWidth: 15 },
+      7: { halign: "right", cellWidth: 21, fontStyle: "bold" }
+    },
+    didParseCell: function (data) {
+      // Keep Rate and Total headers right-aligned with their content
+      if (data.section === 'head' && data.column.index >= 6) {
+        data.cell.styles.halign = 'right';
+      }
     }
 
 

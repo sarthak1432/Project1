@@ -25,8 +25,12 @@ export default function Reports() {
         const allData = allSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         setInvoices(allData);
 
-        const recentSnap = await getDocs(query(collection(db, "invoices"), orderBy("date", "desc"), limit(5)));
-        setRecentInvoices(recentSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const recentSnap = await getDocs(query(collection(db, "invoices"), orderBy("date", "desc")));
+        const filteredRecent = recentSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(i => !i.isDeleted)
+          .slice(0, 5);
+        setRecentInvoices(filteredRecent);
       } catch (error) {
         console.error("Error fetching repo data:", error);
       } finally {
