@@ -146,16 +146,29 @@ const generatePDF = async (data) => {
   doc.setTextColor(...cTextGray);
   doc.text("DATE OF ISSUE", summaryBoxX + 5, currentY + 14);
   doc.text("PAYMENT STATUS", summaryBoxX + 5, currentY + 21);
-  doc.text("PAYMENT MODE", summaryBoxX + 5, currentY + 28); // Added Payment Mode label
+
+  const payStatus = data.paymentStatus || "Paid";
+  if (payStatus === "Paid") {
+    doc.text("PAYMENT MODE", summaryBoxX + 5, currentY + 28);
+  }
 
   doc.setFont("times", "bold");
   doc.setFontSize(8.5);
   doc.setTextColor(...cTextBlack);
   doc.text(data.date || new Date().toLocaleDateString(), summaryBoxX + 32, currentY + 14);
-  doc.setTextColor(34, 139, 34); // Forest Green for Paid
-  doc.text("PAID", summaryBoxX + 32, currentY + 21);
-  doc.setTextColor(...cTextBlack);
-  doc.text(data.paymentMode || "Cash", summaryBoxX + 32, currentY + 28); // Added Payment Mode value
+
+  // Dynamic Payment Status Color
+  if (payStatus === "Paid") {
+    doc.setTextColor(34, 139, 34); // Forest Green for Paid
+  } else {
+    doc.setTextColor(215, 115, 40); // Orange for Pending
+  }
+  doc.text(payStatus.toUpperCase(), summaryBoxX + 32, currentY + 21);
+
+  if (payStatus === "Paid") {
+    doc.setTextColor(...cTextBlack);
+    doc.text(data.paymentMode || "Cash", summaryBoxX + 32, currentY + 28);
+  }
 
   currentY += 45;
 

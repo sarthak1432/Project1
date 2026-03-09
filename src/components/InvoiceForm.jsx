@@ -45,6 +45,7 @@ const initialState = {
   extraCost: "",
   designDevCost: "",
   paymentMode: "Cash",
+  paymentStatus: "Paid",
   addGST: "No",
   customerGST: "",
 };
@@ -177,6 +178,8 @@ export default function InvoiceForm() {
         gstAmount,
         subtotal,
         total,
+        paymentMode: formData.paymentMode,
+        paymentStatus: formData.paymentStatus,
         date: new Date().toLocaleDateString(),
       };
 
@@ -459,10 +462,10 @@ export default function InvoiceForm() {
               </div>
             </section>
 
-            {/* Section: Extra Charges */}
+            {/* Section: Extra Charges & Payment */}
             <section>
-              <SectionLabel text="Extra Charges" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+              <SectionLabel text="Add-ons & Payment" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 mb-4 sm:mb-5">
                 <FormField
                   icon={<IndianRupee size={18} />}
                   label="Extra Cost (INR)"
@@ -471,14 +474,27 @@ export default function InvoiceForm() {
                   value={formData.extraCost}
                   onChange={(v) => updateField("extraCost", v)}
                 />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 mt-4 sm:mt-5">
                 <FormField
-                  icon={<CreditCard size={18} />}
-                  label="Payment Mode"
+                  icon={<FileText size={18} />}
+                  label="Payment Status"
                   type="select"
-                  value={formData.paymentMode}
-                  options={["Cash", "UPI"]}
-                  onChange={(v) => updateField("paymentMode", v)}
+                  value={formData.paymentStatus}
+                  options={["Pending", "Paid"]}
+                  onChange={(v) => updateField("paymentStatus", v)}
                 />
+                {formData.paymentStatus === "Paid" && (
+                  <FormField
+                    icon={<CreditCard size={18} />}
+                    label="Payment Mode"
+                    type="select"
+                    value={formData.paymentMode}
+                    options={["Cash", "UPI"]}
+                    onChange={(v) => updateField("paymentMode", v)}
+                  />
+                )}
               </div>
             </section>
 
