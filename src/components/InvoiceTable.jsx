@@ -151,7 +151,7 @@ export default function InvoiceTable() {
               <div className="grid grid-cols-1 gap-3 text-[11px] text-slate-500 dark:text-slate-400">
                 <div className="flex justify-between items-center bg-white/50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-50 dark:border-slate-800/50">
                   <span className="text-slate-400 dark:text-slate-500 font-medium uppercase">Design / Print / Dev</span>
-                  <span className="text-slate-700 dark:text-slate-200 font-semibold">{inv.designTime}m / {inv.printTime}h / {inv.developmentTime}h</span>
+                  <span className="text-slate-700 dark:text-slate-200 font-semibold">{inv.designTime}h / {inv.printTime}h / {inv.developmentTime}h</span>
                 </div>
                 <div className="flex justify-between items-center bg-white/50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-50 dark:border-slate-800/50">
                   <span className="text-slate-400 dark:text-slate-500 font-medium uppercase">Weight / Price</span>
@@ -208,7 +208,7 @@ export default function InvoiceTable() {
                       {inv.filament}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{inv.designTime}m</td>
+                  <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{inv.designTime}h</td>
                   <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{inv.printTime}h</td>
                   <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{inv.developmentTime}h</td>
                   <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{inv.grams}g</td>

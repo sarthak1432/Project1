@@ -81,14 +81,14 @@ const generatePDF = async (data) => {
 
   // Logo (Left-aligned, Top corner)
   try {
-    const logoBase64 = await loadImageAsBase64("/logo.jpg");
-    // Move 5mm up: y=5 instead of 10, and 2.5mm left: x=margin-2.5
+    const logoUrl = window.location.origin + "/logo.jpg";
+    const logoBase64 = await loadImageAsBase64(logoUrl);
     doc.addImage(logoBase64, "JPEG", margin - 2.5, 5, 42, 30);
   } catch (e) {
     doc.setFont("times", "bold");
     doc.setFontSize(22);
     doc.setTextColor(...cWhite);
-    doc.text("KITS", margin - 2.5, 20); // Moved 5mm up from 25, and 2.5mm left
+    doc.text("KITS", margin - 2.5, 20);
   }
 
   // "INVOICE" Title (Right-aligned)
@@ -208,7 +208,7 @@ const generatePDF = async (data) => {
     body: [[
       { content: data.model, styles: { fontStyle: 'bold' } },
       data.filament,
-      `${data.designTime || 0}m`,
+      `${data.designTime || 0}h`,
       `${data.printTime || 0}h`,
       `${data.grams}g`,
       `${data.developmentTime || 0}h`,
@@ -280,9 +280,11 @@ const generatePDF = async (data) => {
 
   // ── 4.7 Summary Breakdown ──────────────────────
   const itemsCost = (data.price || 0) * (data.grams || 0);
+  const hasDesignDevCost = data.designDevCost && Number(data.designDevCost) > 0;
+  const hasExtraCost = data.extraCost && Number(data.extraCost) > 0;
 
-  // 1. Items Subtotal (Always show if extra cost or GST exists)
-  if ((data.extraCost && Number(data.extraCost) > 0) || data.addGST === "Yes") {
+  // 1. Items Subtotal (Always show if extra cost / dev cost / GST exists)
+  if (hasExtraCost || hasDesignDevCost || data.addGST === "Yes") {
     doc.setFont("times", "bold");
     doc.setFontSize(8.5);
     doc.setTextColor(...cTextGray);
@@ -293,8 +295,20 @@ const generatePDF = async (data) => {
     currentY += 7;
   }
 
-  // 2. Extra Cost (If any)
-  if (data.extraCost && Number(data.extraCost) > 0) {
+  // 2. Design & Development Cost (If any)
+  if (hasDesignDevCost) {
+    doc.setFont("times", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...cTextGray);
+    doc.text("DESIGN & DEVELOPMENT COST:", rightCol - 70, currentY);
+    doc.setFont("times", "normal");
+    doc.setTextColor(...cTextBlack);
+    doc.text(formatCurrency(data.designDevCost), rightCol, currentY, { align: "right" });
+    currentY += 7;
+  }
+
+  // 3. Extra Cost (If any)
+  if (hasExtraCost) {
     doc.setFont("times", "bold");
     doc.setFontSize(8.5);
     doc.setTextColor(...cTextGray);

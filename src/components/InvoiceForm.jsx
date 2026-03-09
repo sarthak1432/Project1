@@ -43,6 +43,7 @@ const initialState = {
   developmentTime: "",
   accessories: [],
   extraCost: "",
+  designDevCost: "",
   paymentMode: "Cash",
   addGST: "No",
   customerGST: "",
@@ -86,8 +87,9 @@ export default function InvoiceForm() {
   const total = useMemo(() => {
     const gramCost = (Number(formData.grams) || 0) * (Number(formData.ratePerGram) || 0);
     const extra = Number(formData.extraCost) || 0;
-    return gramCost + extra;
-  }, [formData.grams, formData.ratePerGram, formData.extraCost]);
+    const devCost = Number(formData.designDevCost) || 0;
+    return gramCost + extra + devCost;
+  }, [formData.grams, formData.ratePerGram, formData.extraCost, formData.designDevCost]);
 
   /* UPDATE FIELD */
   const updateField = useCallback((name, value) => {
@@ -158,7 +160,7 @@ export default function InvoiceForm() {
         }
       });
 
-      const subtotal = (Number(formData.grams) * Number(formData.ratePerGram)) + Number(formData.extraCost || 0);
+      const subtotal = (Number(formData.grams) * Number(formData.ratePerGram)) + Number(formData.extraCost || 0) + Number(formData.designDevCost || 0);
       const gstAmount = formData.addGST === "Yes" ? subtotal * 0.18 : 0;
       const total = subtotal + gstAmount;
 
@@ -169,6 +171,7 @@ export default function InvoiceForm() {
         grams: Number(formData.grams) || 0,
         price: Number(formData.ratePerGram) || 0,
         extraCost: Number(formData.extraCost) || 0,
+        designDevCost: Number(formData.designDevCost) || 0,
         developmentTime: Number(formData.developmentTime) || 0,
         addGST: formData.addGST,
         gstAmount,
@@ -319,7 +322,7 @@ export default function InvoiceForm() {
                 <FormField
                   icon={<Clock size={18} />}
                   label="Design Time"
-                  placeholder="Minutes"
+                  placeholder="Hours"
                   type="number"
                   value={formData.designTime}
                   onChange={(v) => updateField("designTime", v)}
@@ -367,6 +370,17 @@ export default function InvoiceForm() {
                   value={formData.developmentTime}
                   onChange={(v) => updateField("developmentTime", v)}
                 />
+                <FormField
+                  icon={<IndianRupee size={18} />}
+                  label="Design & Development Cost (₹)"
+                  placeholder="Enter design & development cost"
+                  type="number"
+                  value={formData.designDevCost}
+                  onChange={(v) => updateField("designDevCost", v)}
+                />
+              </div>
+
+              <div className="mt-4 sm:mt-5">
                 <FormField
                   icon={<IndianRupee size={16} />}
                   label="Add GST?"
@@ -450,7 +464,7 @@ export default function InvoiceForm() {
               <SectionLabel text="Extra Charges" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                 <FormField
-                  icon={<DollarSign size={18} />}
+                  icon={<IndianRupee size={18} />}
                   label="Extra Cost (INR)"
                   placeholder="₹ Manual additional cost"
                   type="number"
