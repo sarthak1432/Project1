@@ -56,10 +56,10 @@ function Toast({ message, type, onClose }) {
       initial={{ opacity: 0, y: -30, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -20, scale: 0.95 }}
-      className={`fixed top-4 left-4 right-4 sm:top-6 sm:right-6 sm:left-auto z-[100] flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl border backdrop-blur-xl
+      className={`fixed top-4 left-4 right-4 sm:top-6 sm:right-6 sm:left-auto z-[100] flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl border backdrop-blur-xl transition-colors
         ${isSuccess
-          ? "bg-emerald-50/90 border-emerald-200 text-emerald-800"
-          : "bg-red-50/90 border-red-200 text-red-800"
+          ? "bg-emerald-50/90 border-emerald-200 text-emerald-800 dark:bg-emerald-900/90 dark:border-emerald-800 dark:text-emerald-100"
+          : "bg-red-50/90 border-red-200 text-red-800 dark:bg-red-900/90 dark:border-red-800 dark:text-red-100"
         }`}
     >
       {isSuccess ? (
@@ -188,7 +188,7 @@ export default function InvoiceForm() {
       a.href = url;
 
 
-      
+
       a.download = buildFilename();
       a.click();
 
@@ -221,9 +221,9 @@ export default function InvoiceForm() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full"
+        className="w-full transition-colors"
       >
-        <div className="bg-white/70 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50 overflow-hidden">
+        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50 dark:border-slate-800/50 overflow-hidden">
 
           {/* ── Header ─────────────────────────────────── */}
           <div className="relative bg-gradient-to-r from-indigo-600 via-blue-600 to-violet-600 px-5 py-5 sm:px-8 sm:py-7">
@@ -290,11 +290,11 @@ export default function InvoiceForm() {
                     <select
                       value={formData.filament}
                       onChange={(e) => updateField("filament", e.target.value)}
-                      className={`w-full pl-11 pr-4 py-3 rounded-xl border-2 text-sm bg-slate-50/50
+                      className={`w-full pl-11 pr-4 py-3 rounded-xl border-2 text-sm bg-slate-50/50 dark:bg-slate-800/50 dark:text-slate-200
                         transition-all duration-200 outline-none appearance-none cursor-pointer
                         ${errors.filament
-                          ? "border-red-300 focus:border-red-400 focus:ring-4 focus:ring-red-50"
-                          : "border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 hover:border-slate-300"
+                          ? "border-red-300 focus:border-red-400 focus:ring-4 focus:ring-red-50 dark:focus:ring-red-900/20"
+                          : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 hover:border-slate-300 dark:hover:border-slate-600"
                         }`}
                     >
                       <option value="">Select filament...</option>
@@ -425,7 +425,7 @@ export default function InvoiceForm() {
                         placeholder="e.g. 4x M3 Screws"
                         value={acc}
                         onChange={(e) => updateAccessory(idx, e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border-2 border-slate-100 text-sm bg-slate-50/30 outline-none focus:border-indigo-400 transition-all"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border-2 border-slate-100 dark:border-slate-800 text-sm bg-slate-50/30 dark:bg-slate-800/30 dark:text-slate-200 outline-none focus:border-indigo-400 dark:focus:border-indigo-500 transition-all placeholder:dark:text-slate-600"
                       />
                     </div>
                     <button
@@ -438,7 +438,7 @@ export default function InvoiceForm() {
                   </motion.div>
                 ))}
                 {formData.accessories.length === 0 && (
-                  <p className="text-center py-4 text-slate-400 text-xs italic border-2 border-dashed border-slate-100 rounded-2xl">
+                  <p className="text-center py-4 text-slate-400 dark:text-slate-500 text-xs italic border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl">
                     No accessories added. Click "Add Item" to include extra parts.
                   </p>
                 )}
@@ -531,10 +531,10 @@ export default function InvoiceForm() {
 function SectionLabel({ text }) {
   return (
     <div className="flex items-center gap-2 mb-4">
-      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+      <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
         {text}
       </h3>
-      <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent" />
+      <div className="flex-1 h-px bg-gradient-to-r from-slate-200 dark:from-slate-800 to-transparent" />
     </div>
   );
 }
@@ -543,7 +543,7 @@ function SectionLabel({ text }) {
 function FormField({ icon, label, placeholder, value, onChange, type = "text", options = [], error }) {
   return (
     <div>
-      <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
         {label}
       </label>
       <div className="relative">
@@ -554,11 +554,11 @@ function FormField({ icon, label, placeholder, value, onChange, type = "text", o
           <select
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className={`w-full pl-11 pr-10 py-3 rounded-xl border-2 text-sm bg-slate-50/50
+            className={`w-full pl-11 pr-10 py-3 rounded-xl border-2 text-sm bg-slate-50/50 dark:bg-slate-800/50 dark:text-slate-200
               transition-all duration-200 outline-none appearance-none cursor-pointer
               ${error
-                ? "border-red-300 focus:border-red-400 focus:ring-4 focus:ring-red-50"
-                : "border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 hover:border-slate-300"
+                ? "border-red-300 focus:border-red-400 focus:ring-4 focus:ring-red-50 dark:focus:ring-red-900/20"
+                : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 hover:border-slate-300 dark:hover:border-slate-600"
               }`}
           >
             {placeholder && <option value="" disabled>{placeholder}</option>}
@@ -572,11 +572,11 @@ function FormField({ icon, label, placeholder, value, onChange, type = "text", o
             placeholder={placeholder}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className={`w-full pl-11 pr-4 py-3 rounded-xl border-2 text-sm bg-slate-50/50
-              transition-all duration-200 outline-none
+            className={`w-full pl-11 pr-4 py-3 rounded-xl border-2 text-sm bg-slate-50/50 dark:bg-slate-800/50 dark:text-slate-200
+              transition-all duration-200 outline-none placeholder:dark:text-slate-600
               ${error
-                ? "border-red-300 focus:border-red-400 focus:ring-4 focus:ring-red-50"
-                : "border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 hover:border-slate-300"
+                ? "border-red-300 focus:border-red-400 focus:ring-4 focus:ring-red-50 dark:focus:ring-red-900/20"
+                : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 hover:border-slate-300 dark:hover:border-slate-600"
               }`}
           />
         )}

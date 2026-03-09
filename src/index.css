@@ -1,5 +1,9 @@
 @import "tailwindcss";
-body{
+
+/* Tailwind v4 class-based dark mode */
+@variant dark (&:where(.dark, .dark *));
+
+body {
   font-family: Inter, system-ui;
-  background:#f8fafc;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }

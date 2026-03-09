@@ -68,30 +68,30 @@ export default function Reports() {
 
   if (loading)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50/50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50/50 dark:bg-slate-950/50 transition-colors">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-400 font-medium">Loading Dashboard...</p>
+          <div className="w-12 h-12 border-4 border-indigo-100 dark:border-slate-800 border-t-indigo-600 dark:border-t-indigo-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-400 dark:text-slate-500 font-medium">Loading Dashboard...</p>
         </div>
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-[#fafbfc] px-4 py-8 sm:px-10">
+    <div className="min-h-screen bg-[#fafbfc] dark:bg-slate-950 px-4 py-8 sm:px-10 transition-colors duration-500">
       <div className="max-w-7xl mx-auto">
 
         {/* HEADER SECTION */}
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight leading-none">
-              Financial <span className="text-slate-400 font-light">Overview</span>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight leading-none">
+              Financial <span className="text-slate-400 dark:text-slate-600 font-light">Overview</span>
             </h1>
           </div>
 
-          <div className="flex items-center gap-3 bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-3">Total</span>
-            <div className="h-4 w-px bg-slate-200" />
-            <span className="text-xs font-semibold text-slate-600 px-2">{stats.orderCount} Jobs</span>
+          <div className="flex items-center gap-3 bg-white dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 pl-3">Total</span>
+            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 px-2">{stats.orderCount} Jobs</span>
           </div>
         </header>
 
@@ -121,25 +121,25 @@ export default function Reports() {
 
           {/* Main Table Section */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] overflow-hidden">
-              <div className="px-8 py-6 border-b border-slate-50 flex justify-between items-center">
-                <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                  <Box size={18} className="text-indigo-500" />
+            <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.02)] overflow-hidden transition-colors">
+              <div className="px-8 py-6 border-b border-slate-50 dark:border-slate-800 flex justify-between items-center transition-colors">
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <Box size={18} className="text-indigo-500 dark:text-indigo-400" />
                   Recent Jobs
                 </h3>
-                <button className="text-indigo-600 text-xs font-bold hover:underline">View All Records</button>
+                <button className="text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:underline">View All Records</button>
               </div>
               {/* Mobile View: Cards */}
-              <div className="md:hidden divide-y divide-slate-50">
+              <div className="md:hidden divide-y divide-slate-50 dark:divide-slate-800">
                 {recentInvoices.map((inv, idx) => (
                   <div key={inv.id || idx} className="p-5 space-y-3">
                     <div className="flex justify-between items-start">
-                      <span className="font-bold text-slate-800 text-sm">{inv.customer}</span>
-                      <span className="text-xs font-medium text-slate-400">{inv.date}</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">{inv.customer}</span>
+                      <span className="text-xs font-medium text-slate-400 dark:text-slate-500">{inv.date}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500 font-medium truncate max-w-[150px]">{inv.model}</span>
-                      <span className="font-bold text-indigo-600">₹{inv.total}</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-medium truncate max-w-[150px]">{inv.model}</span>
+                      <span className="font-bold text-indigo-600 dark:text-indigo-400">₹{inv.total}</span>
                     </div>
                   </div>
                 ))}
@@ -148,7 +148,7 @@ export default function Reports() {
               {/* Desktop View: Table */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left">
-                  <thead className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+                  <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none transition-colors">
                     <tr>
                       <th className="px-8 py-4">Customer</th>
                       <th className="px-6 py-4">Model</th>
@@ -156,13 +156,13 @@ export default function Reports() {
                       <th className="px-8 py-4 text-right">Date</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50">
+                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800 transition-colors">
                     {recentInvoices.map((inv, idx) => (
-                      <tr key={inv.id || idx} className="hover:bg-slate-50/30 transition-colors">
-                        <td className="px-8 py-4 font-bold text-slate-700 text-sm whitespace-nowrap">{inv.customer}</td>
-                        <td className="px-6 py-4 text-slate-500 text-sm truncate max-w-[150px]">{inv.model}</td>
-                        <td className="px-6 py-4 font-bold text-slate-900 text-sm">₹{inv.total}</td>
-                        <td className="px-8 py-4 text-slate-400 text-xs font-medium text-right whitespace-nowrap">{inv.date}</td>
+                      <tr key={inv.id || idx} className="hover:bg-slate-50/30 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className="px-8 py-4 font-bold text-slate-700 dark:text-slate-300 text-sm whitespace-nowrap">{inv.customer}</td>
+                        <td className="px-6 py-4 text-slate-500 dark:text-slate-400 text-sm truncate max-w-[150px]">{inv.model}</td>
+                        <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 text-sm">₹{inv.total}</td>
+                        <td className="px-8 py-4 text-slate-400 dark:text-slate-500 text-xs font-medium text-right whitespace-nowrap">{inv.date}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -200,21 +200,21 @@ function MetricCard({ label, value, trend, icon }) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4 }}
-      className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] transition-all"
+      className="bg-white dark:bg-slate-900 p-7 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.02)] transition-all"
     >
       <div className="flex justify-between items-start mb-4">
-        <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">
+        <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 dark:text-slate-500 transition-colors">
           {icon}
         </div>
         {trend && (
-          <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg">
+          <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/40 px-2 py-1 rounded-lg">
             {trend}
           </span>
         )}
       </div>
       <div>
-        <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">{label}</p>
-        <h3 className="text-2xl font-black text-slate-800">{value}</h3>
+        <p className="text-slate-400 dark:text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">{label}</p>
+        <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100">{value}</h3>
       </div>
     </motion.div>
   );
