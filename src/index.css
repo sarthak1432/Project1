@@ -1,9 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 /* Tailwind v4 class-based dark mode */
 @variant dark (&:where(.dark, .dark *));
 
+:root {
+  --font-outfit: 'Outfit', sans-serif;
+}
+
 body {
-  font-family: Inter, system-ui;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  font-family: var(--font-outfit), system-ui;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(129, 140, 248, 0.1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.3);
+}
+
+/* Utilities for premium glassmorphism */
+.glass-panel {
+  @apply bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-white/50 dark:border-slate-800/50 shadow-[0_8px_40px_rgba(0,0,0,0.04)];
+}
+
+.glass-card {
+  @apply bg-white/40 dark:bg-slate-800/20 backdrop-blur-md border border-white/20 dark:border-slate-700/20 rounded-2xl;
+}
+
+/* Custom Scrollbar Class */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 10px;
+}
+
+/* Selection */
+::selection {
+  background: rgba(99, 102, 241, 0.2);
+  color: inherit;
 }

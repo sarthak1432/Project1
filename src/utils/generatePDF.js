@@ -27,6 +27,7 @@ function loadImageAsBase64(url) {
  * Focuses on clean whitespace, high-end typography, and a simple but professional UI.
  */
 const generatePDF = async (data) => {
+  console.log("Starting PDF generation for invoice:", data.invoiceNumber);
   const doc = new jsPDF();
 
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -81,10 +82,13 @@ const generatePDF = async (data) => {
 
   // Logo (Left-aligned, Top corner)
   try {
+    console.log("Attempting to load logo...");
     const logoUrl = window.location.origin + "/logo.jpg";
     const logoBase64 = await loadImageAsBase64(logoUrl);
     doc.addImage(logoBase64, "JPEG", margin - 2.5, 5, 42, 30);
+    console.log("Logo loaded successfully.");
   } catch (e) {
+    console.warn("Failed to load logo, using text fallback:", e);
     doc.setFont("times", "bold");
     doc.setFontSize(22);
     doc.setTextColor(...cWhite);
@@ -407,7 +411,8 @@ const generatePDF = async (data) => {
   doc.setFontSize(7.5);
   doc.text("info@kitstechsolutions.com", centerX, footerY + 11.5, { align: "center" });
 
-  return doc.output("blob");
+  console.log("PDF generation complete. Returning blob.");
+  return doc.output("blob", { filename: `Invoice_${data.customer}.pdf` });
 };
 
 export default generatePDF;

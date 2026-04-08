@@ -9,12 +9,9 @@ import {
   Box,
   Droplets,
   Scale,
-  DollarSign,
   Download,
-  AlertCircle,
   Phone,
   Loader2,
-  CheckCircle2,
   Zap,
   Plus,
   Trash2,
@@ -23,6 +20,7 @@ import {
   IndianRupee,
 } from "lucide-react";
 import generatePDF from "../utils/generatePDF";
+import { Toast, SectionLabel, FormField } from "./FormElements";
 
 /* FIRESTORE */
 import { db } from "../firebase/config";
@@ -50,33 +48,6 @@ const initialState = {
   customerGST: "",
 };
 
-/* ── Toast Component ────────────────────────────────────────── */
-function Toast({ message, type, onClose }) {
-  const isSuccess = type === "success";
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -30, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -20, scale: 0.95 }}
-      className={`fixed top-4 left-4 right-4 sm:top-6 sm:right-6 sm:left-auto z-[100] flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl border backdrop-blur-xl transition-colors
-        ${isSuccess
-          ? "bg-emerald-50/90 border-emerald-200 text-emerald-800 dark:bg-emerald-900/90 dark:border-emerald-800 dark:text-emerald-100"
-          : "bg-red-50/90 border-red-200 text-red-800 dark:bg-red-900/90 dark:border-red-800 dark:text-red-100"
-        }`}
-    >
-      {isSuccess ? (
-        <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />
-      ) : (
-        <AlertCircle size={20} className="text-red-500 shrink-0" />
-      )}
-      <span className="text-sm font-medium">{message}</span>
-      <button onClick={onClose} className="ml-2 opacity-50 hover:opacity-100 transition text-lg leading-none">
-        ×
-      </button>
-    </motion.div>
-  );
-}
-
 /* ── Main Component ─────────────────────────────────────────── */
 export default function InvoiceForm() {
   const [formData, setFormData] = useState(initialState);
@@ -89,8 +60,10 @@ export default function InvoiceForm() {
     const gramCost = (Number(formData.grams) || 0) * (Number(formData.ratePerGram) || 0);
     const extra = Number(formData.extraCost) || 0;
     const devCost = Number(formData.designDevCost) || 0;
-    return gramCost + extra + devCost;
-  }, [formData.grams, formData.ratePerGram, formData.extraCost, formData.designDevCost]);
+    const subtotal = gramCost + extra + devCost;
+    const gst = formData.addGST === "Yes" ? subtotal * 0.18 : 0;
+    return subtotal + gst;
+  }, [formData.grams, formData.ratePerGram, formData.extraCost, formData.designDevCost, formData.addGST]);
 
   /* UPDATE FIELD */
   const updateField = useCallback((name, value) => {
@@ -139,72 +112,124 @@ export default function InvoiceForm() {
   /* SAVE + PDF */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate()) {
+      showToast("Please fix errors in the form.", "error");
+      return;
+    }
 
     setLoading(true);
+    let stage = "Initializing";
+    console.log("Submit started...");
 
     try {
+      stage = "Getting Invoice Number";
       let invoiceNumber = 1;
 
       // ATOMIC TRANSACTION TO GET SEQUENTIAL INVOICE NUMBER
-      await runTransaction(db, async (transaction) => {
-        const counterRef = doc(db, "metadata", "counters");
-        const counterSnap = await transaction.get(counterRef);
+      console.log("Fetching invoice number...");
+      try {
+        await runTransaction(db, async (transaction) => {
+          const counterRef = doc(db, "metadata", "counters");
+          const counterSnap = await transaction.get(counterRef);
 
-        if (!counterSnap.exists()) {
-          transaction.set(counterRef, { lastInvoiceNumber: 1 });
-          invoiceNumber = 1;
-        } else {
-          const newNum = (counterSnap.data().lastInvoiceNumber || 0) + 1;
-          transaction.update(counterRef, { lastInvoiceNumber: newNum });
-          invoiceNumber = newNum;
-        }
-      });
+          if (!counterSnap.exists()) {
+            transaction.set(counterRef, { lastInvoiceNumber: 1 });
+            invoiceNumber = 1;
+          } else {
+            const newNum = (counterSnap.data().lastInvoiceNumber || 0) + 1;
+            transaction.update(counterRef, { lastInvoiceNumber: newNum });
+            invoiceNumber = newNum;
+          }
+        });
+      } catch (transErr) {
+        console.error("Transaction failed:", transErr);
+        throw new Error(`Invoice number counter failed: ${transErr.message}. Make sure Firebase rules allow access to 'metadata/counters'.`);
+      }
+      
+      console.log("Invoice number assigned:", invoiceNumber);
 
+      stage = "Saving Document";
       const subtotal = (Number(formData.grams) * Number(formData.ratePerGram)) + Number(formData.extraCost || 0) + Number(formData.designDevCost || 0);
       const gstAmount = formData.addGST === "Yes" ? subtotal * 0.18 : 0;
-      const total = subtotal + gstAmount;
+      const totalAmount = subtotal + gstAmount;
 
       const payload = {
-        ...formData,
-        invoiceNumber,
-        customerGST: formData.customerGST,
+        customer: formData.customer || "Unknown",
+        designTime: formData.designTime || "0",
+        printTime: formData.printTime || "0",
+        model: formData.model || "Unknown",
+        filament: formData.filament || "PLA",
         grams: Number(formData.grams) || 0,
         price: Number(formData.ratePerGram) || 0,
+        clientPhone: formData.clientPhone || "",
+        developmentTime: Number(formData.developmentTime) || 0,
+        accessories: Array.isArray(formData.accessories) ? formData.accessories.filter(a => a && a.trim()) : [],
         extraCost: Number(formData.extraCost) || 0,
         designDevCost: Number(formData.designDevCost) || 0,
-        developmentTime: Number(formData.developmentTime) || 0,
-        addGST: formData.addGST,
+        paymentMode: formData.paymentMode || "Cash",
+        paymentStatus: formData.paymentStatus || "Paid",
+        addGST: formData.addGST || "No",
+        customerGST: formData.customerGST || "",
+        invoiceNumber,
         gstAmount,
         subtotal,
-        total,
-        paymentMode: formData.paymentMode,
-        paymentStatus: formData.paymentStatus,
+        total: totalAmount,
         date: new Date().toLocaleDateString(),
+        createdAt: new Date().toISOString()
       };
 
       /* SAVE FIRESTORE */
-      await addDoc(collection(db, "invoices"), payload);
+      console.log("Saving to Firestore...");
+      try {
+        await addDoc(collection(db, "invoices"), payload);
+      } catch (dbErr) {
+        console.error("Firestore addDoc failed:", dbErr);
+        throw new Error(`Database save failed: ${dbErr.message}. Check your Firebase permissions/rules.`);
+      }
+      console.log("Saved to Firestore.");
 
       /* PDF */
-      const blob = await generatePDF(payload);
+      stage = "Generating PDF";
+      console.log("Generating PDF...");
+      let blob;
+      try {
+        blob = await generatePDF(payload);
+      } catch (pdfErr) {
+        console.error("PDF generation failed:", pdfErr);
+        throw new Error(`PDF creation failed: ${pdfErr.message}`);
+      }
+      
+      if (!blob || blob.size === 0) {
+        throw new Error("Generated PDF blob is empty or invalid.");
+      }
+
+      console.log("PDF Blob created, size:", blob.size);
       const url = URL.createObjectURL(blob);
 
       const a = document.createElement("a");
+      a.style.display = "none";
       a.href = url;
-
-
-
       a.download = buildFilename();
+      document.body.appendChild(a);
+      
+      console.log("Triggering download...");
       a.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        if (document.body.contains(a)) {
+          document.body.removeChild(a);
+        }
+        URL.revokeObjectURL(url);
+      }, 100);
 
-      URL.revokeObjectURL(url);
       resetForm();
       setErrors({});
       showToast("Invoice saved & PDF downloaded successfully!");
+      console.log("Finalized successfully.");
     } catch (err) {
-      console.error(err);
-      showToast("Failed to save invoice. Please try again.", "error");
+      console.error(`Error at ${stage}:`, err);
+      showToast(`${stage} Failed: ${err.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -212,7 +237,6 @@ export default function InvoiceForm() {
 
   return (
     <>
-      {/* Toast */}
       <AnimatePresence>
         {toast && (
           <Toast
@@ -231,7 +255,6 @@ export default function InvoiceForm() {
       >
         <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/50 dark:border-slate-800/50 overflow-hidden">
 
-          {/* ── Header ─────────────────────────────────── */}
           <div className="relative bg-gradient-to-r from-indigo-600 via-blue-600 to-violet-600 px-5 py-5 sm:px-8 sm:py-7">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djZoLTZWMzRoNnptMC0zMHY2aC02VjRoNnptMCAxMnY2aC02VjE2aDZ6bTAgMTJ2Nmg2djZoLTZ2LTZ6bTEyLTI0djZoLTZWNGg2em0wIDEydjZoLTZWMTZoNnptMCAxMnY2aC02VjI4aDZ6bS0yNC0yNHY2SDEyVjRoNnptMCAxMnY2SDEyVjE2aDZ6bTAgMTJ2NkgxMlYyOGg2em0wIDEydjZIMTJWNDBoNnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-30" />
             <div className="relative flex items-center gap-4">
@@ -242,15 +265,11 @@ export default function InvoiceForm() {
                 <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
                   New Invoice
                 </h1>
-
               </div>
             </div>
           </div>
 
-          {/* ── Form Body ──────────────────────────────── */}
           <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-6 sm:space-y-7">
-
-            {/* Section: Customer Info */}
             <section>
               <SectionLabel text="Customer Information" />
               <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
@@ -272,7 +291,6 @@ export default function InvoiceForm() {
               </div>
             </section>
 
-            {/* Section: Job Details */}
             <section>
               <SectionLabel text="Job Details" />
               <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
@@ -284,41 +302,19 @@ export default function InvoiceForm() {
                   onChange={(v) => updateField("model", v)}
                   error={errors.model}
                 />
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                    Filament Type
-                  </label>
-                  <div className="relative">
-                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-                      <Droplets size={18} />
-                    </div>
-                    <select
-                      value={formData.filament}
-                      onChange={(e) => updateField("filament", e.target.value)}
-                      className={`w-full pl-11 pr-4 py-3 rounded-xl border-2 text-sm bg-slate-50/50 dark:bg-slate-800/50 dark:text-slate-200
-                        transition-all duration-200 outline-none appearance-none cursor-pointer
-                        ${errors.filament
-                          ? "border-red-300 focus:border-red-400 focus:ring-4 focus:ring-red-50 dark:focus:ring-red-900/20"
-                          : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 hover:border-slate-300 dark:hover:border-slate-600"
-                        }`}
-                    >
-                      <option value="">Select filament...</option>
-                      {FILAMENT_OPTIONS.map((f) => (
-                        <option key={f} value={f}>{f}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {errors.filament && (
-                    <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">
-                      <AlertCircle size={12} /> {errors.filament}
-                    </p>
-                  )}
-                </div>
+                <FormField
+                 icon={<Droplets size={18} />}
+                 label="Filament Type"
+                 type="select"
+                 placeholder="Select filament..."
+                 value={formData.filament}
+                 options={FILAMENT_OPTIONS}
+                 onChange={(v) => updateField("filament", v)}
+                 error={errors.filament}
+                />
               </div>
             </section>
 
-            {/* Section: Time */}
             <section>
               <SectionLabel text="Time Estimates" />
               <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
@@ -341,7 +337,6 @@ export default function InvoiceForm() {
               </div>
             </section>
 
-            {/* Section: Pricing */}
             <section>
               <SectionLabel text="Pricing" />
               <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
@@ -412,14 +407,13 @@ export default function InvoiceForm() {
               )}
             </section>
 
-            {/* Section: Accessories */}
             <section>
               <div className="flex items-center justify-between mb-4">
                 <SectionLabel text="Additional Accessories" />
                 <button
                   type="button"
                   onClick={addAccessory}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-800 transition-colors"
                 >
                   <Plus size={14} /> Add Item
                 </button>
@@ -448,7 +442,7 @@ export default function InvoiceForm() {
                     <button
                       type="button"
                       onClick={() => removeAccessory(idx)}
-                      className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors"
+                      className="p-2.5 bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 rounded-xl hover:bg-red-100 dark:hover:bg-red-800 transition-colors"
                     >
                       <Trash2 size={18} />
                     </button>
@@ -462,7 +456,6 @@ export default function InvoiceForm() {
               </div>
             </section>
 
-            {/* Section: Extra Charges & Payment */}
             <section>
               <SectionLabel text="Add-ons & Payment" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 mb-4 sm:mb-5">
@@ -498,7 +491,6 @@ export default function InvoiceForm() {
               </div>
             </section>
 
-            {/* ── Total ────────────────────────────────── */}
             <motion.div
               layout
               className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-blue-600 to-violet-600 p-5 sm:p-6"
@@ -506,9 +498,7 @@ export default function InvoiceForm() {
               <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/10" />
               <div className="relative flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100 text-sm font-medium">
-                    Final Amount
-                  </p>
+                  <p className="text-blue-100 text-sm font-medium">Final Amount</p>
                   <motion.p
                     key={total}
                     initial={{ scale: 0.95 }}
@@ -524,7 +514,6 @@ export default function InvoiceForm() {
               </div>
             </motion.div>
 
-            {/* ── Submit ───────────────────────────────── */}
             <motion.button
               type="submit"
               disabled={loading}
@@ -549,80 +538,9 @@ export default function InvoiceForm() {
                 </>
               )}
             </motion.button>
-
           </form>
         </div>
       </motion.div>
     </>
-  );
-}
-
-/* ── Section Label ──────────────────────────────────────────── */
-function SectionLabel({ text }) {
-  return (
-    <div className="flex items-center gap-2 mb-4">
-      <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-        {text}
-      </h3>
-      <div className="flex-1 h-px bg-gradient-to-r from-slate-200 dark:from-slate-800 to-transparent" />
-    </div>
-  );
-}
-
-/* ── Form Field ─────────────────────────────────────────────── */
-function FormField({ icon, label, placeholder, value, onChange, type = "text", options = [], error }) {
-  return (
-    <div>
-      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-        {label}
-      </label>
-      <div className="relative">
-        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-          {icon}
-        </div>
-        {type === "select" ? (
-          <select
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className={`w-full pl-11 pr-10 py-3 rounded-xl border-2 text-sm bg-slate-50/50 dark:bg-slate-800/50 dark:text-slate-200
-              transition-all duration-200 outline-none appearance-none cursor-pointer
-              ${error
-                ? "border-red-300 focus:border-red-400 focus:ring-4 focus:ring-red-50 dark:focus:ring-red-900/20"
-                : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 hover:border-slate-300 dark:hover:border-slate-600"
-              }`}
-          >
-            {placeholder && <option value="" disabled>{placeholder}</option>}
-            {options.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
-        ) : (
-          <input
-            type={type}
-            placeholder={placeholder}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className={`w-full pl-11 pr-4 py-3 rounded-xl border-2 text-sm bg-slate-50/50 dark:bg-slate-800/50 dark:text-slate-200
-              transition-all duration-200 outline-none placeholder:dark:text-slate-600
-              ${error
-                ? "border-red-300 focus:border-red-400 focus:ring-4 focus:ring-red-50 dark:focus:ring-red-900/20"
-                : "border-slate-200 dark:border-slate-700 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 hover:border-slate-300 dark:hover:border-slate-600"
-              }`}
-          />
-        )}
-        {type === "select" && (
-          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        )}
-      </div>
-      {error && (
-        <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">
-          <AlertCircle size={12} /> {error}
-        </p>
-      )}
-    </div>
   );
 }

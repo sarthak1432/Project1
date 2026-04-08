@@ -1,6 +1,6 @@
 // src/components/InvoiceTable.jsx
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Search, FileSpreadsheet, Edit3, Trash2, Database, Loader2, X } from "lucide-react";
+import { Search, FileSpreadsheet, Edit3, Trash2, Database, Loader2, X, MoreVertical } from "lucide-react";
 import { db } from "../firebase/config";
 import {
   collection,
@@ -10,6 +10,41 @@ import {
   updateDoc
 } from "firebase/firestore";
 import * as XLSX from "xlsx";
+import { motion, AnimatePresence } from "framer-motion";
+
+/* ── Status Badge ───────────────────────────────────────────── */
+function StatusBadge({ mode }) {
+  const isUPI = mode === "UPI";
+  return (
+    <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase transition-colors ${
+      isUPI ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
+    }`}>
+      {mode || "Cash"}
+    </span>
+  );
+}
+
+/* ── Action Buttons ─────────────────────────────────────────── */
+function ActionButtons({ onEdit, onDelete }) {
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={onEdit}
+        className="p-2 bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition-all border border-slate-100 dark:border-slate-800 shadow-sm"
+        title="Edit"
+      >
+        <Edit3 size={16} />
+      </button>
+      <button
+        onClick={onDelete}
+        className="p-2 bg-white dark:bg-slate-900 hover:bg-red-50 dark:hover:bg-red-900/40 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 rounded-lg transition-all border border-slate-100 dark:border-slate-800 shadow-sm"
+        title="Delete"
+      >
+        <Trash2 size={16} />
+      </button>
+    </div>
+  );
+}
 
 export default function InvoiceTable() {
   const [invoices, setInvoices] = useState([]);
@@ -20,11 +55,12 @@ export default function InvoiceTable() {
   /* FETCH */
   const fetchInvoices = useCallback(async () => {
     try {
+      setLoading(true);
       const snap = await getDocs(collection(db, "invoices"));
       const allData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setInvoices(allData.filter(i => !i.isDeleted));
+      setInvoices(allData.filter(i => !i.isDeleted).sort((a, b) => b.invoiceNumber - a.invoiceNumber));
     } catch (e) {
-      console.error(e);
+      console.error("Error fetching invoices:", e);
     } finally {
       setLoading(false);
     }
@@ -36,22 +72,26 @@ export default function InvoiceTable() {
 
   /* FILTER */
   const filteredInvoices = useMemo(() => {
+    const term = search.toLowerCase().trim();
+    if (!term) return invoices;
     return invoices.filter(inv =>
-      inv.customer?.toLowerCase().includes(search.toLowerCase())
+      inv.customer?.toLowerCase().includes(term) ||
+      inv.model?.toLowerCase().includes(term)
     );
   }, [invoices, search]);
 
   /* EXCEL */
   const downloadExcel = () => {
-    const sheet = XLSX.utils.json_to_sheet(invoices);
+    const dataToExport = filteredInvoices.map(({ id, isDeleted, ...rest }) => rest);
+    const sheet = XLSX.utils.json_to_sheet(dataToExport);
     const book = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(book, sheet, "Invoices");
-    XLSX.writeFile(book, "Invoice_Data.xlsx");
+    XLSX.writeFile(book, `Invoice_History_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   /* DELETE */
   const deleteInvoice = async (id) => {
-    if (!window.confirm("Delete this invoice?")) return;
+    if (!window.confirm("Delete this invoice record? This action can be undone later if needed.")) return;
     try {
       await updateDoc(doc(db, "invoices", id), { isDeleted: true });
       setInvoices(prev => prev.filter(i => i.id !== id));
@@ -63,12 +103,20 @@ export default function InvoiceTable() {
   /* UPDATE */
   const saveUpdate = async () => {
     const { id, ...rest } = editData;
+    const subtotal = (Number(editData.grams) * Number(editData.price)) + Number(editData.extraCost || 0) + Number(editData.designDevCost || 0);
+    const gstAmount = editData.addGST === "Yes" ? subtotal * 0.18 : 0;
+    const totalAmount = subtotal + gstAmount;
+
     const payload = {
       ...rest,
       grams: Number(editData.grams),
       price: Number(editData.price),
+      extraCost: Number(editData.extraCost || 0),
+      designDevCost: Number(editData.designDevCost || 0),
       developmentTime: Number(editData.developmentTime) || 0,
-      total: Number(editData.grams) * Number(editData.price)
+      subtotal,
+      gstAmount,
+      total: totalAmount
     };
 
     try {
@@ -79,6 +127,7 @@ export default function InvoiceTable() {
       setEditData(null);
     } catch (e) {
       console.error("Error updating document: ", e);
+      alert("Failed to update: " + e.message);
     }
   };
 
@@ -115,7 +164,7 @@ export default function InvoiceTable() {
               </div>
               <input
                 type="text"
-                placeholder="Search by customer name..."
+                placeholder="Search by customer or model..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-11 pr-4 py-2.5 rounded-xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 dark:text-slate-200 
@@ -129,70 +178,65 @@ export default function InvoiceTable() {
               text-white rounded-xl font-semibold text-sm shadow-lg shadow-indigo-100 dark:shadow-none transition-all sm:w-auto w-full group"
             >
               <FileSpreadsheet size={18} className="group-hover:scale-110 transition-transform" />
-              <span>Export CSV</span>
+              <span>Export Excel</span>
             </button>
           </div>
         </div>
 
-        {/* MOBILE CARDS VIEW (md:hidden) */}
+        {/* MOBILE CARDS VIEW */}
         <div className="md:hidden space-y-4">
-          {filteredInvoices.map(inv => (
-            <div key={inv.id} className="bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 space-y-4 transition-colors">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">{inv.customer}</h3>
-                  <p className="text-slate-500 dark:text-slate-400 text-xs mt-0.5">{inv.model} • {inv.filament}</p>
+          <AnimatePresence>
+            {filteredInvoices.map(inv => (
+              <motion.div
+                key={inv.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 space-y-4 transition-colors"
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">{inv.customer}</h3>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mt-0.5">{inv.model} • {inv.filament}</p>
+                  </div>
+                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded">
+                    ₹{(inv.total || 0).toFixed(2)}
+                  </span>
                 </div>
-                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded">
-                  ₹{inv.total}
-                </span>
-              </div>
 
-              <div className="grid grid-cols-1 gap-3 text-[11px] text-slate-500 dark:text-slate-400">
-                <div className="flex justify-between items-center bg-white/50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-50 dark:border-slate-800/50">
-                  <span className="text-slate-400 dark:text-slate-500 font-medium uppercase">Design / Print / Dev</span>
-                  <span className="text-slate-700 dark:text-slate-200 font-semibold">{inv.designTime}h / {inv.printTime}h / {inv.developmentTime}h</span>
+                <div className="grid grid-cols-1 gap-3 text-[11px] text-slate-500 dark:text-slate-400">
+                  <div className="flex justify-between items-center bg-white/50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-50 dark:border-slate-800/50">
+                    <span className="text-slate-400 dark:text-slate-500 font-medium uppercase">Design / Print / Dev</span>
+                    <span className="text-slate-700 dark:text-slate-200 font-semibold">{inv.designTime || 0}h / {inv.printTime || 0}h / {inv.developmentTime || 0}h</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-white/50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-50 dark:border-slate-800/50">
+                    <span className="text-slate-400 dark:text-slate-500 font-medium uppercase">Weight / Price</span>
+                    <span className="text-slate-700 dark:text-slate-200 font-semibold">{inv.grams || 0}g / ₹{(inv.price || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-white/50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-50 dark:border-slate-800/50">
+                    <span className="text-slate-400 dark:text-slate-500 font-medium uppercase">Payment</span>
+                    <StatusBadge mode={inv.paymentMode} />
+                  </div>
                 </div>
-                <div className="flex justify-between items-center bg-white/50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-50 dark:border-slate-800/50">
-                  <span className="text-slate-400 dark:text-slate-500 font-medium uppercase">Weight / Price</span>
-                  <span className="text-slate-700 dark:text-slate-200 font-semibold">{inv.grams}g / ₹{inv.price}</span>
-                </div>
-                <div className="flex justify-between items-center bg-white/50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-50 dark:border-slate-800/50">
-                  <span className="text-slate-400 dark:text-slate-500 font-medium uppercase">Payment Mode</span>
-                  <span className="text-slate-700 dark:text-slate-200 font-semibold">{inv.paymentMode || "Cash"}</span>
-                </div>
-              </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100/50 dark:border-slate-800/50">
-                <span className="text-[10px] text-slate-400 dark:text-slate-500">{inv.date}</span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setEditData(inv)}
-                    className="p-2 bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg border border-slate-100 dark:border-slate-800 shadow-sm transition-colors"
-                  >
-                    <Edit3 size={16} />
-                  </button>
-                  <button
-                    onClick={() => deleteInvoice(inv.id)}
-                    className="p-2 bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 rounded-lg border border-slate-100 dark:border-slate-800 shadow-sm transition-colors"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100/50 dark:border-slate-800/50">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500">{inv.date}</span>
+                  <ActionButtons onEdit={() => setEditData(inv)} onDelete={() => deleteInvoice(inv.id)} />
                 </div>
-              </div>
-            </div>
-          ))}
+              </motion.div>
+            ))}
+          </AnimatePresence>
           {filteredInvoices.length === 0 && (
             <div className="p-8 text-center text-slate-400 italic text-sm">No records found.</div>
           )}
         </div>
 
-        {/* DESKTOP TABLE VIEW (hidden md:block) */}
+        {/* DESKTOP TABLE VIEW */}
         <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/30 transition-colors">
           <table className="w-full text-sm text-left border-collapse">
             <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-bold tracking-widest border-b border-slate-100 dark:border-slate-800 transition-colors">
               <tr>
-                {["Customer", "Model", "Filament", "Design", "Print", "Dev", "Grams", "Price", "Total", "Payment", "Date", "Actions"].map(h => (
+                {["Customer", "Model", "Filament", "Time (D/P/D)", "Weight", "Rate", "Total", "Payment", "Date", "Actions"].map(h => (
                   <th key={h} className="px-6 py-4 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -208,34 +252,20 @@ export default function InvoiceTable() {
                       {inv.filament}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{inv.designTime}h</td>
-                  <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{inv.printTime}h</td>
-                  <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{inv.developmentTime}h</td>
-                  <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{inv.grams}g</td>
-                  <td className="px-6 py-4 text-slate-500 dark:text-slate-400">₹{inv.price}</td>
-                  <td className="px-6 py-4 font-bold text-indigo-600 dark:text-indigo-400">₹{inv.total}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase transition-colors ${inv.paymentMode === "UPI" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
-                      }`}>
-                      {inv.paymentMode || "Cash"}
-                    </span>
+                  <td className="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs">
+                    {inv.designTime || 0}h / {inv.printTime || 0}h / {inv.developmentTime || 0}h
                   </td>
-                  <td className="px-6 py-4 text-slate-400 dark:text-slate-500 text-xs">{inv.date}</td>
-                  <td className="px-6 py-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => setEditData(inv)}
-                      className="p-2 bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition-all border border-slate-100 dark:border-slate-800 shadow-sm"
-                      title="Edit"
-                    >
-                      <Edit3 size={16} />
-                    </button>
-                    <button
-                      onClick={() => deleteInvoice(inv.id)}
-                      className="p-2 bg-white dark:bg-slate-900 hover:bg-red-50 dark:hover:bg-red-900/40 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 rounded-lg transition-all border border-slate-100 dark:border-slate-800 shadow-sm"
-                      title="Delete"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                  <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{inv.grams}g</td>
+                  <td className="px-6 py-4 text-slate-500 dark:text-slate-400">₹{(inv.price || 0).toFixed(2)}</td>
+                  <td className="px-6 py-4 font-bold text-indigo-600 dark:text-indigo-400">₹{(inv.total || 0).toFixed(2)}</td>
+                  <td className="px-6 py-4">
+                    <StatusBadge mode={inv.paymentMode} />
+                  </td>
+                  <td className="px-6 py-4 text-slate-400 dark:text-slate-500 text-xs whitespace-nowrap">{inv.date}</td>
+                  <td className="px-6 py-4">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ActionButtons onEdit={() => setEditData(inv)} onDelete={() => deleteInvoice(inv.id)} />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -252,85 +282,102 @@ export default function InvoiceTable() {
       </div>
 
       {/* EDIT MODAL */}
-      {editData && (
-        <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 transition-colors">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-white dark:border-slate-800 transition-all">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 transition-colors">
-              <h3 className="font-bold text-slate-800 dark:text-slate-100">Edit Record</h3>
-              <button onClick={() => setEditData(null)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition">
-                <X size={20} />
-              </button>
-            </div>
+      <AnimatePresence>
+        {editData && (
+          <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 transition-colors">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-white dark:border-slate-800 transition-all"
+            >
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 transition-colors">
+                <h3 className="font-bold text-slate-800 dark:text-slate-100">Edit Record</h3>
+                <button onClick={() => setEditData(null)} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition">
+                  <X size={20} />
+                </button>
+              </div>
 
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Customer</label>
-                <input
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 dark:text-slate-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 outline-none transition-all text-sm"
-                  value={editData.customer}
-                  onChange={e => setEditData({ ...editData, customer: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Grams</label>
+                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Customer</label>
                   <input
-                    type="number"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 dark:text-slate-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 outline-none transition-all text-sm"
-                    value={editData.grams}
-                    onChange={e => setEditData({ ...editData, grams: e.target.value })}
+                    value={editData.customer}
+                    onChange={e => setEditData({ ...editData, customer: e.target.value })}
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Grams</label>
+                    <input
+                      type="number"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 dark:text-slate-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 outline-none transition-all text-sm"
+                      value={editData.grams}
+                      onChange={e => setEditData({ ...editData, grams: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Rate</label>
+                    <input
+                      type="number"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 dark:text-slate-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 outline-none transition-all text-sm"
+                      value={editData.price}
+                      onChange={e => setEditData({ ...editData, price: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Extra Cost</label>
+                    <input
+                      type="number"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 dark:text-slate-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 outline-none transition-all text-sm"
+                      value={editData.extraCost || 0}
+                      onChange={e => setEditData({ ...editData, extraCost: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Dev Time (Hrs)</label>
+                    <input
+                      type="number"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 dark:text-slate-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 outline-none transition-all text-sm"
+                      value={editData.developmentTime || 0}
+                      onChange={e => setEditData({ ...editData, developmentTime: e.target.value })}
+                    />
+                  </div>
+                </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Rate</label>
-                  <input
-                    type="number"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 dark:text-slate-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 outline-none transition-all text-sm"
-                    value={editData.price}
-                    onChange={e => setEditData({ ...editData, price: e.target.value })}
-                  />
+                  <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Payment Mode</label>
+                  <select
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 dark:text-slate-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 outline-none transition-all text-sm appearance-none cursor-pointer"
+                    value={editData.paymentMode || "Cash"}
+                    onChange={e => setEditData({ ...editData, paymentMode: e.target.value })}
+                  >
+                    <option value="Cash">Cash</option>
+                    <option value="UPI">UPI</option>
+                  </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Development Time (Hrs)</label>
-                <input
-                  type="number"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 dark:text-slate-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 outline-none transition-all text-sm"
-                  value={editData.developmentTime}
-                  onChange={e => setEditData({ ...editData, developmentTime: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Payment Mode</label>
-                <select
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 dark:text-slate-200 focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 dark:focus:ring-indigo-900/20 outline-none transition-all text-sm appearance-none cursor-pointer"
-                  value={editData.paymentMode || "Cash"}
-                  onChange={e => setEditData({ ...editData, paymentMode: e.target.value })}
+
+              <div className="p-6 flex gap-3 bg-slate-50/50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 transition-colors">
+                <button
+                  onClick={() => setEditData(null)}
+                  className="flex-1 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
                 >
-                  <option value="Cash">Cash</option>
-                  <option value="UPI">UPI</option>
-                </select>
+                  Cancel
+                </button>
+                <button
+                  onClick={saveUpdate}
+                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-100 dark:shadow-none transition-colors"
+                >
+                  Save Changes
+                </button>
               </div>
-            </div>
-
-
-            <div className="p-6 flex gap-3 bg-slate-50/50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 transition-colors">
-              <button
-                onClick={() => setEditData(null)}
-                className="flex-1 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveUpdate}
-                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-100 dark:shadow-none transition-colors"
-              >
-                Save Changes
-              </button>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }

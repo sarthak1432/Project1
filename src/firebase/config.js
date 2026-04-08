@@ -39,10 +39,16 @@ const getFirebaseConfig = () => {
 
 const firebaseConfig = getFirebaseConfig();
 
-// Diagnostic warning
-if (!firebaseConfig.projectId && import.meta.env.PROD) {
-  console.error("CRITICAL: Firebase Project ID is STILL undefined. Please follow the new 'One-Key' guide.");
+// ── DIAGNOSTIC LOGGING ───────────────────────────────────────
+console.group("🚀 Firebase Initialization Diagnostic");
+console.log("Project ID:", firebaseConfig.projectId || "❌ MISSING");
+console.log("API Key:", firebaseConfig.apiKey ? "✅ LOADED" : "❌ MISSING");
+console.log("Auth Domain:", firebaseConfig.authDomain || "❌ MISSING");
+
+if (!firebaseConfig.projectId) {
+  console.error("CRITICAL: Firebase Project ID is UNDEFINED. Check your .env file or Vite environment setup.");
 }
+console.groupEnd();
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
