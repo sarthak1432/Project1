@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache } from "firebase/firestore";
 
 const getFirebaseConfig = () => {
   const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
@@ -51,6 +51,11 @@ if (!firebaseConfig.projectId) {
 console.groupEnd();
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+
+// Use modern persistent cache (replaces deprecated enableIndexedDbPersistence)
+export const db = initializeFirestore(app, {
+  cache: persistentLocalCache()
+});
+
 
 

@@ -1,7 +1,7 @@
 // src/components/Reports.jsx
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { db } from "../firebase/config";
-import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   IndianRupee,
@@ -71,33 +71,31 @@ export default function Reports() {
   const [recentInvoices, setRecentInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      // Fetch all for totals and specifically ordered recent for list
-      const [allSnap, recentSnap] = await Promise.all([
-        getDocs(collection(db, "invoices")),
-        getDocs(query(collection(db, "invoices"), orderBy("date", "desc"), limit(15)))
-      ]);
-
-      const allData = allSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setInvoices(allData.filter(i => !i.isDeleted));
-
-      const filteredRecent = recentSnap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(i => !i.isDeleted)
-        .slice(0, 5);
-      setRecentInvoices(filteredRecent);
-    } catch (error) {
-      console.error("Dashboard Sync Failed:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  /* FETCH (Real-time) */
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    setLoading(true);
+    const q = collection(db, "invoices");
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const allData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const activeInvoices = allData.filter(i => !i.isDeleted);
+      
+      setInvoices(activeInvoices);
+
+      // Sort by date desc and limit to 5 for recent activity
+      const recent = [...activeInvoices]
+        .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))
+        .slice(0, 5);
+      setRecentInvoices(recent);
+      
+      setLoading(false);
+    }, (error) => {
+      console.error("Dashboard Sync Failed:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const stats = useMemo(() => {
     let totalRevenue = 0;

@@ -1,5 +1,5 @@
 // src/components/InvoiceTable.jsx
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Search, FileSpreadsheet, Edit3, Trash2, Database, Loader2, X, MoreVertical } from "lucide-react";
 import { db } from "../firebase/config";
 import {
@@ -7,7 +7,8 @@ import {
   getDocs,
   deleteDoc,
   doc,
-  updateDoc
+  updateDoc,
+  onSnapshot
 } from "firebase/firestore";
 import * as XLSX from "xlsx";
 import { motion, AnimatePresence } from "framer-motion";
@@ -52,23 +53,23 @@ export default function InvoiceTable() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  /* FETCH */
-  const fetchInvoices = useCallback(async () => {
-    try {
-      setLoading(true);
-      const snap = await getDocs(collection(db, "invoices"));
+  /* FETCH (Real-time) */
+  useEffect(() => {
+    setLoading(true);
+    const q = collection(db, "invoices");
+    
+    // onSnapshot provides real-time updates
+    const unsubscribe = onSnapshot(q, (snap) => {
       const allData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setInvoices(allData.filter(i => !i.isDeleted).sort((a, b) => b.invoiceNumber - a.invoiceNumber));
-    } catch (e) {
-      console.error("Error fetching invoices:", e);
-    } finally {
       setLoading(false);
-    }
-  }, []);
+    }, (error) => {
+      console.error("Error listening to invoices:", error);
+      setLoading(false);
+    });
 
-  useEffect(() => {
-    fetchInvoices();
-  }, [fetchInvoices]);
+    return () => unsubscribe();
+  }, []);
 
   /* FILTER */
   const filteredInvoices = useMemo(() => {
