@@ -1,5 +1,5 @@
 // src/components/InvoiceForm.jsx
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText,
@@ -49,26 +49,11 @@ const initialState = {
 };
 
 /* ── Main Component ─────────────────────────────────────────── */
-const DRAFT_KEY = "kits_invoice_draft";
-
 export default function InvoiceForm() {
-  const [formData, setFormData] = useState(() => {
-    // Load draft from localStorage on first mount
-    try {
-      const saved = localStorage.getItem(DRAFT_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return { ...initialState, ...parsed };
-      }
-    } catch (e) {
-      console.warn("Could not restore draft:", e);
-    }
-    return initialState;
-  });
+  const [formData, setFormData] = useState(initialState);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
-  const [hasDraft, setHasDraft] = useState(() => !!localStorage.getItem(DRAFT_KEY));
 
   /* TOTAL */
   const total = useMemo(() => {
@@ -80,21 +65,7 @@ export default function InvoiceForm() {
     return subtotal + gst;
   }, [formData.grams, formData.ratePerGram, formData.extraCost, formData.designDevCost, formData.addGST]);
 
-  /* SAVE DRAFT TO LOCALSTORAGE */
-  useEffect(() => {
-    // Don't save if it's exactly the initial state (nothing typed yet)
-    const isEmpty = Object.entries(formData).every(([key, val]) => {
-      if (key === 'accessories') return val.length === 0;
-      if (key === 'paymentMode') return val === 'Cash';
-      if (key === 'paymentStatus') return val === 'Paid';
-      if (key === 'addGST') return val === 'No';
-      return val === '' || val === initialState[key];
-    });
-    if (!isEmpty) {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
-      setHasDraft(true);
-    }
-  }, [formData]);
+
 
   /* UPDATE FIELD */
   const updateField = useCallback((name, value) => {
@@ -128,14 +99,8 @@ export default function InvoiceForm() {
     return Object.keys(e).length === 0;
   };
 
-  const clearDraft = () => {
-    localStorage.removeItem(DRAFT_KEY);
-    setHasDraft(false);
-  };
-
   const resetForm = () => {
     setFormData(initialState);
-    clearDraft();
   };
 
   const buildFilename = () => {
@@ -286,29 +251,7 @@ export default function InvoiceForm() {
         )}
       </AnimatePresence>
 
-      {/* DRAFT RESTORED BANNER */}
-      <AnimatePresence>
-        {hasDraft && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-amber-200 dark:border-amber-800/50 bg-amber-50/80 dark:bg-amber-900/20 px-5 py-3 text-sm text-amber-800 dark:text-amber-300 backdrop-blur-sm"
-          >
-            <span className="flex items-center gap-2 font-medium">
-              <span className="text-amber-500">💾</span>
-              Draft restored — your unsaved form data has been recovered.
-            </span>
-            <button
-              type="button"
-              onClick={resetForm}
-              className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-800/40 hover:bg-amber-200 dark:hover:bg-amber-700/50 text-amber-700 dark:text-amber-300 transition-colors"
-            >
-              Clear Draft
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
