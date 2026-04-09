@@ -119,21 +119,6 @@ export default function App() {
           </h2>
 
           <div className="flex items-center gap-2">
-            <button 
-              onClick={async () => {
-                try {
-                  const demoRef = collection(db, "connection_test");
-                  await addDoc(demoRef, { timestamp: new Date().toISOString() });
-                  alert("✅ Firebase connection successful! Permissions are working.");
-                } catch (e) {
-                  console.error("Firebase Test Error:", e);
-                  alert(`❌ Connection Failed: ${e.message}\n\nCheck your Firebase Console Rules and Project ID in .env`);
-                }
-              }}
-              className="text-[10px] font-bold px-3 py-1.5 bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 rounded-lg border border-indigo-100 dark:border-slate-700 hover:bg-white transition-all mr-2"
-            >
-              Test Connection
-            </button>
             <ThemeToggle className="md:hidden" />
             <span className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 whitespace-nowrap">
               Admin
